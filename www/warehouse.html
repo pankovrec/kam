@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Управление складом</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+</head>
+
+<body>
+    <div class="container">
+        <h1>Управление складом</h1>
+
+        <!-- Вкладки -->
+        <ul class="nav nav-tabs">
+            <li class="active"><a href="#items" data-toggle="tab">Товары</a></li>
+            <li><a href="#categories" data-toggle="tab">Категории</a></li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- Вкладка товаров -->
+            <div id="items" class="tab-pane fade in active">
+                <h2>Товары на складе</h2>
+                <button class="btn btn-primary" data-toggle="modal" data-target="#addItemModal">
+                    Добавить товар
+                </button>
+
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Категория</th>
+                            <th>Наименование</th>
+                            <th>Количество</th>
+                            <th>Комментарии</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Items}}
+                        <tr data-id="{{.ID}}"> <!-- Добавьте data-id для строк -->
+                            <td>{{.CategoryName}}</td> <!-- Используйте CategoryName вместо Category -->
+                            <td>{{.Name}}</td>
+                            <td>{{.Qty}}</td>
+                            <td>{{.Comments}}</td>
+                            <td>
+                                <a href="#" class="edit-item" data-id="{{.ID}}">✏️</a>
+                                <a href="#" class="delete-item" data-id="{{.ID}}">❌</a>
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Вкладка категорий -->
+            <div id="categories" class="tab-pane fade">
+                <h2>Категории</h2>
+                <button class="btn btn-primary" data-toggle="modal" data-target="#addCategoryModal">
+                    Добавить категорию
+                </button>
+
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Categories}}
+                        <tr>
+                            <td>{{.Name}}</td>
+                            <td>
+                                <a href="#" class="edit-category" data-id="{{.ID}}">✏️</a>
+                                <a href="/deleteCategory?id={{.ID}}" class="delete-category">❌</a>
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальные окна -->
+    {{template "addItemModal" .}}
+    {{template "addCategoryModal" .}}
+    {{template "editItemModal" .}}
+    {{template "editCategoryModal" .}}
+
+    <!-- Подключение скриптов -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <script src="/assets/js/warehouse.js"></script>
+</body>
+
+</html>
+
+{{define "addItemModal"}}
+<div class="modal fade" id="addItemModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form action="/saveItem" method="POST">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Добавить товар</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Категория</label>
+                        <select name="categorie_id" class="form-control" required>
+                            {{range .Categories}}
+                            <option value="{{.ID}}">{{.Name}}</option>
+                            {{end}}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Наименование</label>
+                        <input type="text" name="name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Количество</label>
+                        <input type="number" name="qty" class="form-control" required min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Комментарии</label>
+                        <textarea name="comments" class="form-control"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{define "addCategoryModal"}}
+<div class="modal fade" id="addCategoryModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form action="/saveCategory" method="POST">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Добавить категорию</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Название категории</label>
+                        <input type="text" name="name" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{define "editCategoryModal"}}
+<div class="modal fade" id="editCategoryModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form action="/saveCategory" method="POST">
+                <input type="hidden" name="id" id="editCategoryId">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Редактировать категорию</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Название категории</label>
+                        <input type="text" name="name" id="editCategoryName" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{define "editItemModal"}}
+<div class="modal fade" id="editItemModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form action="/saveItem" method="POST">
+                <input type="hidden" name="id" id="editItemId">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Редактировать товар</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Категория</label>
+                        <select name="categorie_id" id="editItemCategory" class="form-control" required>
+                            {{range .Categories}}
+                            <option value="{{.ID}}">{{.Name}}</option>
+                            {{end}}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Наименование</label>
+                        <input type="text" name="name" id="editItemName" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Количество</label>
+                        <input type="number" name="qty" id="editItemQty" class="form-control" required min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Комментарии</label>
+                        <textarea name="comments" id="editItemComments" class="form-control"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{{end}}

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+  <meta name="description" content="">
+  <meta name="author" content="">
+  <link rel="icon" href="assets/images/favicon.ico">
+
+  <title>Задача | Ключевые пользователи</title>
+
+  <!-- Bootstrap core CSS -->
+  <link href="assets/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Custom styles for this template -->
+  <link href="assets/css/dashboard.css" rel="stylesheet">
+
+  <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
+  <!--[if lt IE 9]><script src="../../assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
+  <script src="assets/js/ie-emulation-modes-warning.js"></script>
+
+
+  <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+  <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+</head>
+
+<body>
+
+  <nav class="navbar navbar-inverse navbar-fixed-top">
+    <div class="container-fluid">
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar"
+          aria-expanded="false" aria-controls="navbar">
+          <span class="sr-only">Toggle navigation</span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="/">Ключевые пользователи</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-sm-9 col-md-8 col-md-offset-2 main">
+        <h1 class="page-header">Обращение</h1>
+
+        <form method="post" action="/save">
+          <div class="form-group">
+            <label for="inputName">ID (назначается автоматически)</label>
+            <span class="form-control">
+              {{if .TargetTask.ID}}{{.TargetTask.ID}}{{else}}Новый{{end}}
+            </span>
+            <input type="hidden" id="inputID" name="id" value="{{.TargetTask.ID}}" />
+          </div>
+
+          <div class="form-group">
+            <label for="inputUser">Пользователь</label>
+
+            <select id="userSelect" span class="form-control" name="user">
+              {{range .UserList}}
+              <option value="{{.ID}}">{{.Name}}
+                {{.Surname}}</option>
+              {{end}}
+              <option selected="{{.TargetTask.User}}">{{.TargetTask.User}}</option>
+
+            </select>
+            </span>
+          </div>
+
+
+
+          <div class="form-group">
+            <label for="inputTaskDescription">Обращение</label>
+            <input class="form-control" id="inputDescription" name="description" autocomplete="off"
+              placeholder="введите текст обращения" value="{{.TargetTask.TaskDescription}}" />
+          </div>
+
+          <script>
+            const lentaCheckbox = document.getElementById("{{.TargetTask.Lenta}}");
+            if (lentaCheckbox.value === "true") {
+              lentaCheckbox.checked = true;
+            }
+          </script>
+
+          <!-- <div class="form-group">
+            <label for="lenta">Лента?</label>
+            
+            <input type="checkbox" id="inputLenta" name="lenta"
+              value="{{.TargetTask.Lenta}}" />{{.TargetTask.Lenta}}
+              
+          </div> -->
+          <div class="form-group">
+            <label for="lenta">Лента?</label>
+
+            <input type="checkbox" id="inputLenta" name="lenta" value="{{.TargetTask.Lenta}}" {{if
+              .TargetTask.Lenta}}checked{{end}} />
+          </div>
+          <div class="form-group">
+            <label for="completedByPetrov">Петров</label>
+            <input type="checkbox" id="completedByPetrov" name="completedByPetrov"
+              value="{{.TargetTask.CompletedByPetrov}}" {{if .TargetTask.CompletedByPetrov}}checked{{end}} />
+          </div>
+          <div class="form-group">
+            <label for="completedByPankov">Паньков</label>
+            <input type="checkbox" id="completedByPankov" name="completedByPankov"
+              value="{{.TargetTask.CompletedByPankov}}" {{if .TargetTask.CompletedByPankov}}checked{{end}} />
+          </div>
+
+          <div class="form-group">
+            <label for="inputPlaces">Место</label>
+
+            <select id="placeSelect" span class="form-control" name="places">
+              {{range .PlacesList}}
+              <option value="{{.ID}}">{{.Name}}</option>
+              {{end}}
+              <option selected="{{.TargetTask.Places}}">{{.TargetTask.Places}}</option>
+
+
+            </select>
+            </span>
+          </div>
+
+          <div class="form-group">
+            <label for="inputPublicationDate">Дата/время поступления</label>
+            <input type="datetime-local" id="inputPublicationDate" name="publicationDate" autocomplete="off"
+              placeholder="YYYY-MM-DD" value="{{ .TargetTask.PublicationDateStr }}" />
+            <!-- <input class="form-control" id="inputPublicationDate" name="publicationDate" autocomplete="off" placeholder="YYYY-MM-DD" -->
+          </div>
+
+          <div class="form-group">
+            <label for="inputFinishDate">Дата/время окончания</label>
+            <input type="datetime-local" id="inputFinishDate" name="finishDate" autocomplete="off"
+              placeholder="YYYY-MM-DD" value="{{ .TargetTask.FinishDateStr }}" />
+          </div>
+
+          <div class="form-group">
+            <label for="duration">Интервал (посчитает автоматически)</label>
+            <input class="form-control" id="duration" name="duration" autocomplete="off" placeholder="YYYY-MM-DD"
+              value="{{ .TargetTask.Duration }}" />
+          </div>
+
+          <div class="form-group">
+            <label>Категория материалов</label>
+            <select id="categorySelect" class="form-control">
+              <option value="">-- Выберите категорию --</option>
+              {{range .WarehouseCategories}}
+              <option value="{{.ID}}">{{.Name}}</option>
+              {{end}}
+            </select>
+          </div>
+
+          <div class="form-group" id="itemsGroup" style="display: none;">
+            <label>Товары</label>
+            <select multiple id="itemsSelect" class="form-control" name="used_items">
+              <!-- Товары будут подгружаться динамически -->
+            </select>
+          </div>
+
+          <div class="form-group" id="qtyGroup" style="display: none;">
+            <label>Количество</label>
+            <input type="number" id="itemQty" name="item_qty" class="form-control" min="1">
+            <small class="text-muted">Доступно: <span id="availableQty">0</span> шт.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="inputComments">Комментарии</label>
+            <input class="form-control" id="inputComments" name="comments" autocomplete="off"
+              placeholder="введите комментарии" value="{{.TargetTask.Comments}}" />
+          </div>
+
+          <button type="submit" class="btn btn-primary">OK</button>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap core JavaScript
+    ================================================== -->
+  <!-- Placed at the end of the document so the pages load faster -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+  <script src="assets/js/bootstrap.min.js"></script>
+  <script>
+    $(document).ready(function () {
+
+      $('#categorySelect').change(function () {
+        const categoryId = $(this).val();
+        if (!categoryId) {
+          $('#itemsGroup').hide();
+          return;
+        }
+
+        $.get('/api/warehouse/items?category_id=' + categoryId)
+          .done(function (response) {
+            const $itemsSelect = $('#itemsSelect');
+            $itemsSelect.empty();
+
+            if (!response || response.length === 0) {
+              $('#itemsGroup').hide();
+              return;
+            }
+
+            response.forEach(function (item) {
+              $itemsSelect.append(
+                $('<option>', {
+                  value: item.id,
+                  text: item.name + (item.qty ? ' (' + item.qty + ' шт.)' : ''),
+                  'data-qty': item.qty || 0
+                })
+              );
+            });
+            $('#itemsGroup').show();
+          })
+          .fail(function () {
+            console.error('Ошибка загрузки товаров', arguments);
+            $('#itemsGroup').hide();
+          });
+      });
+
+      // Обработчик выбора товара
+      $('#itemsSelect').change(function () {
+        const selectedOption = $(this).find('option:selected');
+        if (selectedOption.length > 0) {
+          const availableQty = selectedOption.first().data('qty');
+          $('#availableQty').text(availableQty);
+          $('#itemQty').attr('max', availableQty).val(1);
+          $('#qtyGroup').show();
+        } else {
+          $('#qtyGroup').hide();
+        }
+      });
+    });
+  </script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+  <script src="assets/js/bootstrap.min.js"></script>
+  <!-- Just to make our placeholder images work. Don't actually copy the next line! -->
+  <script src="assets/js/holder.min.js"></script>
+  <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+  <script src="assets/js/ie10-viewport-bug-workaround.js"></script>
+
+</body>
+
+</html>
