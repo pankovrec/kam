@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Канбан-доска с улучшенной видимостью</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f7f9;
+            color: #333;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+        }
+
+        .logo i {
+            margin-right: 10px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background-color: #f1f1f1;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background-color: #ddd;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            overflow-x: auto;
+            padding-bottom: 20px;
+        }
+
+        .column {
+            flex: 1;
+            min-width: 300px;
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .column-header {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            color: white;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .queue .column-header {
+            background-color: #FF5722;
+        }
+
+        .progress .column-header {
+            background-color: #2196F3;
+        }
+
+        .waiting .column-header {
+            background-color: #FFC107;
+            color: #333;
+        }
+
+        .done .column-header {
+            background-color: #4CAF50;
+        }
+
+        .task-list {
+            min-height: 500px;
+        }
+
+        .task-card {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #ddd;
+            cursor: grab;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .task-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .task-card.urgent {
+            border-left: 4px solid #FF5722;
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .task-title {
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .urgent-badge {
+            background-color: #FF5722;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .task-info {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .task-meta {
+            display: flex;
+            justify-content: space-between;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .task-deadline {
+            font-weight: bold;
+            color: #E91E63;
+        }
+
+        /* Улучшенная диаграмма Ганта с временными интервалами */
+        .gantt-view {
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .gantt-header {
+            display: flex;
+            margin-left: 120px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+
+        .gantt-timescale {
+            display: flex;
+            margin-left: 120px;
+            position: relative;
+            background: #f8f9fa;
+            border-radius: 4px;
+            padding: 5px 0;
+        }
+
+        .gantt-period {
+            flex: 1;
+            text-align: center;
+            font-size: 12px;
+            color: #444;
+            font-weight: 600;
+            padding: 2px;
+            position: relative;
+            border-right: 1px solid #ddd;
+        }
+
+        .gantt-period:last-child {
+            border-right: none;
+        }
+
+        .gantt-time-marks {
+            position: absolute;
+            bottom: -20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #666;
+            padding: 0 5px;
+        }
+
+        .gantt-grid {
+            position: relative;
+            height: 320px;
+            margin-left: 120px;
+            background:
+                repeating-linear-gradient(to right,
+                    transparent,
+                    transparent 6.25%,
+                    #f5f5f5 6.25%,
+                    #f5f5f5 12.5%),
+                linear-gradient(to bottom,
+                    transparent 0%,
+                    transparent 95%,
+                    #eee 95%,
+                    #eee 100%);
+            background-repeat: no-repeat;
+            background-size: 100% 40px;
+            background-position: 0 0;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        .gantt-row {
+            height: 40px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+            position: relative;
+        }
+
+        .gantt-row-label {
+            position: absolute;
+            left: -120px;
+            width: 120px;
+            padding: 0 10px;
+            font-weight: bold;
+            font-size: 14px;
+            color: #444;
+        }
+
+        .gantt-bar {
+            position: absolute;
+            height: 24px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            white-space: nowrap;
+            z-index: 2;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 0 8px;
+        }
+
+        .gantt-bar:hover {
+            transform: scale(1.03);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            z-index: 3;
+        }
+
+        .gantt-bar.urgent {
+            background: linear-gradient(90deg, #FF5722, #FF9800);
+            border: 1px solid #E65100;
+        }
+
+        .gantt-bar.progress {
+            background: linear-gradient(90deg, #2196F3, #03A9F4);
+            border: 1px solid #1565C0;
+        }
+
+        .gantt-bar.waiting {
+            background: linear-gradient(90deg, #FFC107, #FFEB3B);
+            color: #333;
+            border: 1px solid #FF8F00;
+        }
+
+        .gantt-bar.done {
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            border: 1px solid #2E7D32;
+        }
+
+        .gantt-bar-text {
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: bold;
+        }
+
+        .gantt-bar.urgent .gantt-bar-text {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .gantt-today {
+            position: absolute;
+            width: 2px;
+            background: #F44336;
+            height: 100%;
+            top: 0;
+            z-index: 10;
+        }
+
+        .gantt-today::after {
+            content: "Сегодня";
+            position: absolute;
+            top: -20px;
+            left: -15px;
+            font-size: 10px;
+            color: #F44336;
+            white-space: nowrap;
+            font-weight: bold;
+        }
+
+        .gantt-time-indicator {
+            position: absolute;
+            width: 2px;
+            background: #4CAF50;
+            height: 100%;
+            top: 0;
+            z-index: 1;
+        }
+
+        .gantt-time-indicator::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -3px;
+            width: 8px;
+            height: 8px;
+            background: #4CAF50;
+            border-radius: 50%;
+        }
+
+        .working-hours {
+            position: absolute;
+            background: rgba(76, 175, 80, 0.1);
+            height: 100%;
+            border-left: 1px solid #4CAF50;
+            border-right: 1px solid #4CAF50;
+            z-index: 0;
+        }
+
+        .task-card.done {
+            opacity: 0.8;
+        }
+
+        .task-card.done .task-title {
+            text-decoration: line-through;
+        }
+
+        .waiting-info {
+            background-color: #FFF8E1;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background: #4CAF50;
+            color: white;
+            border-radius: 5px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+        }
+
+        .notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .real-time-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #4CAF50;
+            font-size: 14px;
+            margin-left: 15px;
+        }
+
+        .real-time-indicator .pulse {
+            width: 10px;
+            height: 10px;
+            background: #4CAF50;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+            }
+
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+            }
+
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+            }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .close {
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2196F3;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        /* Стили для управления материалами */
+        .material-item {
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .material-info {
+            flex: 1;
+        }
+
+        .material-name {
+            font-weight: bold;
+        }
+
+        .material-quantity {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .quantity-input {
+            width: 70px;
+            text-align: center;
+        }
+
+        .available-quantity {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .available-quantity.low {
+            color: #f44336;
+            font-weight: bold;
+        }
+
+        .add-material-btn {
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .material-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        @media (max-width: 1200px) {
+            .container {
+                flex-wrap: wrap;
+            }
+
+            .column {
+                min-width: calc(50% - 20px);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .column {
+                min-width: 100%;
+            }
+
+            header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .controls {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .gantt-view {
+                overflow-x: auto;
+            }
+
+            .gantt-header,
+            .gantt-timescale,
+            .gantt-grid {
+                width: 800px;
+            }
+
+            .material-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .material-quantity {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="logo">
+            <i class="fas fa-tasks"></i>
+            <span>Канбан-доска с улучшенной видимостью</span>
+        </div>
+        <div class="controls">
+            <button class="btn-primary" id="createTaskBtn">
+                <i class="fas fa-plus"></i> Создать задачу
+            </button>
+            <button class="btn-secondary" id="refreshBtn">
+                <i class="fas fa-sync"></i> Обновить
+            </button>
+            <div class="real-time-indicator">
+                <div class="pulse"></div>
+                <span>Режим реального времени</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="gantt-view">
+        <h2>Диаграмма Ганта с временными интервалами</h2>
+
+        <!-- Временная шкала -->
+        <div class="gantt-timescale">
+            <div class="gantt-period">21 НОЯ</div>
+            <div class="gantt-period">28 НОЯ</div>
+            <div class="gantt-period">5 ДЕК</div>
+            <div class="gantt-period">12 ДЕК</div>
+            <div class="gantt-period">19 ДЕК</div>
+            <div class="gantt-period">26 ДЕК</div>
+            <div class="gantt-period">2 ЯНВ</div>
+            <div class="gantt-period">9 ЯНВ</div>
+        </div>
+
+        <div class="gantt-grid">
+            <!-- Рабочие часы -->
+            <div class="working-hours" style="left: 0%; width: 37.5%;"></div>
+            <div class="working-hours" style="left: 50%; width: 37.5%;"></div>
+
+            <!-- Линия "Сегодня" -->
+            <div class="gantt-today" style="left: 35%;"></div>
+
+            <!-- Текущее время -->
+            <div class="gantt-time-indicator" style="left: 42%;"></div>
+
+            <!-- Задачи на диаграмме Ганта -->
+            <div class="gantt-row">
+                <div class="gantt-row-label">Очередь</div>
+                <div class="gantt-bar urgent" style="left: 10%; width: 12%;" data-task-id="1">
+                    <div class="gantt-bar-text"><i class="fas fa-bolt"></i> Замена монитора</div>
+                </div>
+                <div class="gantt-bar" style="left: 40%; width: 10%; background: rgba(33, 150, 243, 0.9);"
+                    data-task-id="2">
+                    <div class="gantt-bar-text">Установка ПО</div>
+                </div>
+            </div>
+
+            <div class="gantt-row">
+                <div class="gantt-row-label">В работе</div>
+                <div class="gantt-bar urgent" style="left: 5%; width: 15%;" data-task-id="3">
+                    <div class="gantt-bar-text"><i class="fas fa-bolt"></i> Настройка сети</div>
+                </div>
+                <div class="gantt-bar progress" style="left: 40%; width: 7.5%;" data-task-id="4">
+                    <div class="gantt-bar-text">Ремонт принтера</div>
+                </div>
+            </div>
+
+            <div class="gantt-row">
+                <div class="gantt-row-label">Ожидание</div>
+                <div class="gantt-bar waiting urgent" style="left: 25%; width: 17.5%;" data-task-id="5">
+                    <div class="gantt-bar-text"><i class="fas fa-bolt"></i> Обновление сервера</div>
+                </div>
+                <div class="gantt-bar waiting" style="left: 65%; width: 7.5%;" data-task-id="6">
+                    <div class="gantt-bar-text">Резервное копирование</div>
+                </div>
+            </div>
+
+            <div class="gantt-row">
+                <div class="gantt-row-label">Выполнено</div>
+                <div class="gantt-bar done" style="left: 0%; width: 7.5%;" data-task-id="7">
+                    <div class="gantt-bar-text">Установка антивируса</div>
+                </div>
+                <div class="gantt-bar done" style="left: 20%; width: 5%;" data-task-id="8">
+                    <div class="gantt-bar-text">Настройка почты</div>
+                </div>
+            </div>
+
+            <!-- Пересечение задач -->
+            <div class="gantt-row">
+                <div class="gantt-row-label">Риски</div>
+                <div class="gantt-bar urgent" style="left: 35%; width: 10%; background: #F44336;" data-task-id="9">
+                    <div class="gantt-bar-text"><i class="fas fa-bolt"></i> Конфликт времени</div>
+                </div>
+                <div class="gantt-bar" style="left: 60%; width: 15%; background: #9C27B0;" data-task-id="10">
+                    <div class="gantt-bar-text">Срочный запрос</div>
+                </div>
+            </div>
+
+            <!-- Пример трех задач в один день -->
+            <div class="gantt-row">
+                <div class="gantt-row-label">5 декабря</div>
+                <div class="gantt-bar urgent" style="left: 50.5%; width: 4%; background: #FF5722;" data-task-id="11">
+                    <div class="gantt-bar-text"><i class="fas fa-bolt"></i> Задача 1</div>
+                </div>
+                <div class="gantt-bar" style="left: 52%; width: 3%; background: #2196F3;" data-task-id="12">
+                    <div class="gantt-bar-text">Задача 2</div>
+                </div>
+                <div class="gantt-bar" style="left: 54%; width: 5%; background: #4CAF50;" data-task-id="13">
+                    <div class="gantt-bar-text">Задача 3</div>
+                </div>
+            </div>
+        </div>
+        <div style="margin-top: 10px; font-size: 12px; color: #666;">
+            <i class="fas fa-info-circle"></i> Щелкните на любой задаче в диаграмме, чтобы просмотреть детали
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="column queue">
+            <div class="column-header">Очередь</div>
+            <div class="task-list" id="queue-list">
+                <!-- Задачи будут добавляться здесь через JavaScript -->
+            </div>
+        </div>
+
+        <div class="column progress">
+            <div class="column-header">В работе</div>
+            <div class="task-list" id="progress-list">
+                <!-- Задачи будут добавляться здесь через JavaScript -->
+            </div>
+        </div>
+
+        <div class="column waiting">
+            <div class="column-header">Ожидание</div>
+            <div class="task-list" id="waiting-list">
+                <!-- Задачи будут добавляться здесь через JavaScript -->
+            </div>
+        </div>
+
+        <div class="column done">
+            <div class="column-header">Выполненные</div>
+            <div class="task-list" id="done-list">
+                <!-- Задачи будут добавляться здесь через JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Уведомление -->
+    <div class="notification" id="notification">
+        Данные успешно обновлены!
+    </div>
+
+    <!-- Модальное окно создания задачи -->
+    <div class="modal" id="taskModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Создать новую задачу</h2>
+                <span class="close">&times;</span>
+            </div>
+            <form id="taskForm">
+                <div class="form-group">
+                    <label for="user">Пользователь:</label>
+                    <select id="user" required>
+                        <option value="">Выберите пользователя</option>
+                        <option value="1">Иванов А.П.</option>
+                        <option value="2">Петрова М.С.</option>
+                        <option value="3">Сидоров В.К.</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="location">Место обращения:</label>
+                    <select id="location" required>
+                        <option value="">Выберите место</option>
+                        <option value="1">Отдел продаж</option>
+                        <option value="2">Отдел разработки</option>
+                        <option value="3">Бухгалтерия</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="problem">Текст обращения (проблемы):</label>
+                    <textarea id="problem" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="startDate">Дата и время начала:</label>
+                    <input type="datetime-local" id="startDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="deadline">Дата и время окончания:</label>
+                    <input type="datetime-local" id="deadline" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Материалы:</label>
+                    <div id="materials-container">
+                        <!-- Динамически добавляемые материалы -->
+                    </div>
+                    <button type="button" class="btn-secondary add-material-btn" id="add-material-btn">
+                        <i class="fas fa-plus"></i> Добавить материал
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <label for="comment">Комментарий:</label>
+                    <textarea id="comment"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="urgent">
+                        Срочная задача
+                    </label>
+                </div>
+
+                <button type="submit" class="btn-primary">Создать задачу</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно просмотра задачи -->
+    <div class="modal" id="viewTaskModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Просмотр задачи</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div id="taskDetails">
+                <!-- Детали задачи будут добавляться здесь через JavaScript -->
+            </div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value">3д 12ч</div>
+                    <div class="stat-label">Общее время</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">2д 4ч</div>
+                    <div class="stat-label">Время обработки</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">1д 8ч</div>
+                    <div class="stat-label">Время ожидания</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">95%</div>
+                    <div class="stat-label">Эффективность</div>
+                </div>
+            </div>
+
+            <button class="btn-primary" style="margin-top: 20px; width: 100%;">
+                <i class="fas fa-check"></i> Отметить как выполненную
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Данные для примера (в реальном приложении будут загружаться с бэкенда)
+        let tasks = {
+            queue: [
+                {
+                    id: 1,
+                    title: "Замена монитора",
+                    user: "Иванов А.П.",
+                    startDate: "2023-12-01T09:00:00",
+                    deadline: "2023-12-01T11:00:00",
+                    urgent: true,
+                    progress: 30,
+                    materials: [
+                        { category: "Мониторы", model: "Dell UltraSharp U2720Q", quantity: 1, available: 5 },
+                        { category: "Кабели", model: "HDMI 2.0", quantity: 1, available: 20 }
+                    ]
+                },
+                {
+                    id: 2,
+                    title: "Установка ПО",
+                    user: "Петрова М.С.",
+                    startDate: "2023-12-05T14:00:00",
+                    deadline: "2023-12-05T15:00:00",
+                    urgent: false,
+                    progress: 10,
+                    materials: [
+                        { category: "Лицензии", model: "Windows 10 Pro", quantity: 2, available: 15 }
+                    ]
+                }
+            ],
+            progress: [
+                {
+                    id: 3,
+                    title: "Настройка сети",
+                    user: "Сидоров В.К.",
+                    startDate: "2023-11-25T09:00:00",
+                    deadline: "2023-11-25T11:30:00",
+                    urgent: true,
+                    progress: 70,
+                    materials: [
+                        { category: "Маршрутизаторы", model: "Cisco RV340", quantity: 1, available: 3 },
+                        { category: "Кабели", model: "Ethernet CAT6", quantity: 5, available: 50 }
+                    ]
+                },
+                {
+                    id: 4,
+                    title: "Ремонт принтера",
+                    user: "Иванов А.П.",
+                    startDate: "2023-12-01T14:00:00",
+                    deadline: "2023-12-01T15:30:00",
+                    urgent: false,
+                    progress: 50,
+                    materials: [
+                        { category: "Картриджи", model: "HP 125A", quantity: 2, available: 8 }
+                    ]
+                }
+            ],
+            waiting: [
+                {
+                    id: 5,
+                    title: "Обновление сервера",
+                    user: "Петрова М.С.",
+                    startDate: "2023-12-01T10:00:00",
+                    deadline: "2023-12-01T12:30:00",
+                    resumeDate: "2023-12-18T09:00:00",
+                    reason: "Ожидание поставки комплектующих",
+                    urgent: true,
+                    progress: 20,
+                    materials: [
+                        { category: "Память", model: "DDR4 16GB", quantity: 4, available: 2 }
+                    ]
+                },
+                {
+                    id: 6,
+                    title: "Резервное копирование",
+                    user: "Сидоров В.К.",
+                    startDate: "2023-12-03T15:00:00",
+                    deadline: "2023-12-03T16:30:00",
+                    resumeDate: "2023-12-17T09:00:00",
+                    reason: "Ожидание подтверждения от руководства",
+                    urgent: false,
+                    progress: 40,
+                    materials: []
+                }
+            ],
+            done: [
+                {
+                    id: 7,
+                    title: "Установка антивируса",
+                    user: "Иванов А.П.",
+                    startDate: "2023-11-20T09:00:00",
+                    deadline: "2023-11-20T10:30:00",
+                    urgent: false,
+                    progress: 100,
+                    materials: [
+                        { category: "Лицензии", model: "Kaspersky Endpoint Security", quantity: 5, available: 12 }
+                    ]
+                },
+                {
+                    id: 8,
+                    title: "Настройка почты",
+                    user: "Петрова М.С.",
+                    startDate: "2023-11-25T11:00:00",
+                    deadline: "2023-11-25T12:00:00",
+                    urgent: true,
+                    progress: 100,
+                    materials: []
+                }
+            ]
+        };
+
+        // Добавляем дополнительные задачи для примера
+        tasks.queue.push(
+            {
+                id: 9,
+                title: "Конфликт времени",
+                user: "Иванов А.П.",
+                startDate: "2023-12-10T13:30:00",
+                deadline: "2023-12-10T14:30:00",
+                urgent: true,
+                progress: 10,
+                materials: []
+            },
+            {
+                id: 10,
+                title: "Срочный запрос",
+                user: "Петрова М.С.",
+                startDate: "2023-12-15T15:00:00",
+                deadline: "2023-12-15T17:30:00",
+                urgent: false,
+                progress: 5,
+                materials: []
+            },
+            {
+                id: 11,
+                title: "Задача 1",
+                user: "Иванов А.П.",
+                startDate: "2023-12-05T13:00:00",
+                deadline: "2023-12-05T13:30:00",
+                urgent: true,
+                progress: 30,
+                materials: []
+            },
+            {
+                id: 12,
+                title: "Задача 2",
+                user: "Петрова М.С.",
+                startDate: "2023-12-05T13:10:00",
+                deadline: "2023-12-05T13:40:00",
+                urgent: false,
+                progress: 20,
+                materials: []
+            },
+            {
+                id: 13,
+                title: "Задача 3",
+                user: "Сидоров В.К.",
+                startDate: "2023-12-05T13:40:00",
+                deadline: "2023-12-05T14:20:00",
+                urgent: false,
+                progress: 10,
+                materials: []
+            }
+        );
+
+        // Данные о материалах
+        const materialsData = {
+            "Мониторы": [
+                { id: 1, name: "Dell UltraSharp U2720Q", available: 5 },
+                { id: 2, name: "LG 27UL850-W", available: 3 },
+                { id: 3, name: "Samsung U32J590", available: 0 }
+            ],
+            "Мыши": [
+                { id: 4, name: "Logitech MX Master 3", available: 10 },
+                { id: 5, name: "Razer DeathAdder Elite", available: 7 },
+                { id: 6, name: "Microsoft Surface Mouse", available: 2 }
+            ],
+            "Клавиатуры": [
+                { id: 7, name: "Logitech MX Keys", available: 8 },
+                { id: 8, name: "Keychron K2", available: 4 },
+                { id: 9, name: "Dell KB522", available: 15 }
+            ],
+            "Кабели": [
+                { id: 10, name: "HDMI 2.0", available: 20 },
+                { id: 11, name: "USB-C to USB-A", available: 25 },
+                { id: 12, name: "Ethernet CAT6", available: 50 }
+            ],
+            "Лицензии": [
+                { id: 13, name: "Windows 10 Pro", available: 15 },
+                { id: 14, name: "Microsoft Office 365", available: 20 },
+                { id: 15, name: "Kaspersky Endpoint Security", available: 12 }
+            ],
+            "Маршрутизаторы": [
+                { id: 16, name: "Cisco RV340", available: 3 },
+                { id: 17, name: "TP-Link Archer C7", available: 6 }
+            ],
+            "Картриджи": [
+                { id: 18, name: "HP 125A", available: 8 },
+                { id: 19, name: "Canon 045", available: 5 }
+            ],
+            "Память": [
+                { id: 20, name: "DDR4 16GB", available: 2 },
+                { id: 21, name: "DDR4 8GB", available: 10 }
+            ]
+        };
+
+        // Функция для отображения задач
+        function renderTasks() {
+            renderTaskList('queue', tasks.queue);
+            renderTaskList('progress', tasks.progress);
+            renderTaskList('waiting', tasks.waiting);
+            renderTaskList('done', tasks.done);
+        }
+
+        // Функция для отображения списка задач
+        function renderTaskList(status, tasks) {
+            const list = document.getElementById(`${status}-list`);
+            list.innerHTML = '';
+
+            tasks.forEach(task => {
+                const taskElement = document.createElement('div');
+                taskElement.className = `task-card ${task.urgent ? 'urgent' : ''} ${status === 'done' ? 'done' : ''}`;
+                taskElement.setAttribute('data-id', task.id);
+
+                const startTime = formatTime(new Date(task.startDate));
+                const endTime = formatTime(new Date(task.deadline));
+
+                let html = `
+                    <div class="task-header">
+                        <div class="task-title">${task.title}</div>
+                        ${task.urgent ? '<div class="urgent-badge"><i class="fas fa-bolt"></i> Срочно!</div>' : ''}
+                    </div>
+                    <div class="task-info">
+                        <div><i class="fas fa-user"></i> ${task.user}</div>
+                        <div><i class="fas fa-clock"></i> ${startTime} - ${endTime}</div>
+                    </div>
+                `;
+
+                // Материалы задачи
+                if (task.materials && task.materials.length > 0) {
+                    html += `<div style="margin: 10px 0; font-size: 13px;">`;
+                    html += `<div><strong>Материалы:</strong></div>`;
+                    task.materials.forEach(material => {
+                        html += `<div>• ${material.model} (${material.quantity} шт.)</div>`;
+                    });
+                    html += `</div>`;
+                }
+
+                // Упрощенная диаграмма Ганта для карточки
+                html += `
+                    <div style="margin: 10px 0; height: 10px; background: #f0f0f0; border-radius: 5px; overflow: hidden;">
+                        <div style="height: 100%; width: ${task.progress}%; background: ${status === 'waiting' ? '#FFC107' : task.urgent ? '#FF5722' : '#4CAF50'};"></div>
+                    </div>
+                `;
+
+                html += `
+                    <div class="task-meta">
+                        <div>Дедлайн: <span class="task-deadline">${formatDate(task.deadline)}</span></div>
+                        <div>#${task.id}</div>
+                    </div>
+                `;
+
+                if (status === 'waiting') {
+                    html += `
+                        <div class="waiting-info">
+                            <div><strong>Возобновление:</strong> ${formatDate(task.resumeDate)}</div>
+                            <div><strong>Причина:</strong> ${task.reason}</div>
+                        </div>
+                    `;
+                }
+
+                taskElement.innerHTML = html;
+
+                // Добавляем обработчик клика для просмотра деталей
+                taskElement.addEventListener('click', () => {
+                    showTaskDetails(task);
+                });
+
+                list.appendChild(taskElement);
+            });
+        }
+
+        // Функция для создания выпадающего списка материалов
+        function createMaterialSelect(selectedCategory = "", selectedModel = "", quantity = 1) {
+            const categories = Object.keys(materialsData);
+            let options = categories.map(cat =>
+                `<option value="${cat}" ${cat === selectedCategory ? 'selected' : ''}>${cat}</option>`
+            ).join('');
+
+            let modelOptions = '<option value="">Выберите модель</option>';
+            if (selectedCategory && materialsData[selectedCategory]) {
+                modelOptions += materialsData[selectedCategory].map(item =>
+                    `<option value="${item.id}" ${item.name === selectedModel ? 'selected' : ''}>${item.name}</option>`
+                ).join('');
+            }
+
+            const available = selectedModel && selectedCategory ?
+                materialsData[selectedCategory].find(item => item.name === selectedModel)?.available || 0 : 0;
+
+            return `
+                <div class="material-item">
+                    <div class="material-info">
+                        <div class="form-group">
+                            <select class="material-category" required>
+                                <option value="">Выберите категорию</option>
+                                ${options}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <select class="material-model" required>
+                                ${modelOptions}
+                            </select>
+                            <div class="available-quantity ${available === 0 ? 'low' : ''}">
+                                Доступно: ${available}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="material-quantity">
+                        <input type="number" class="quantity-input" min="1" max="${available}" value="${quantity}" required>
+                        <div class="material-actions">
+                            <button type="button" class="btn-danger remove-material">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Функция для форматирования даты
+        function formatDate(dateString, short = false) {
+            const date = new Date(dateString);
+            if (short) {
+                return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+            }
+            return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+        }
+
+        // Функция для форматирования времени
+        function formatTime(date) {
+            return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Функция для показа деталей задачи
+        function showTaskDetails(task) {
+            const modal = document.getElementById('viewTaskModal');
+            const details = document.getElementById('taskDetails');
+
+            const startTime = formatTime(new Date(task.startDate));
+            const endTime = formatTime(new Date(task.deadline));
+
+            let materialsHtml = '';
+            if (task.materials && task.materials.length > 0) {
+                materialsHtml = `
+                    <div style="margin-top: 15px;">
+                        <h4>Материалы:</h4>
+                        <ul>
+                            ${task.materials.map(m => `<li>${m.model} (${m.quantity} шт.) - ${m.category}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            details.innerHTML = `
+                <h3>${task.title} ${task.urgent ? '<span class="urgent-badge"><i class="fas fa-bolt"></i> Срочно!</span>' : ''}</h3>
+                <div class="task-info">
+                    <p><strong>Пользователь:</strong> ${task.user}</p>
+                    <p><strong>Время выполнения:</strong> ${startTime} - ${endTime}</p>
+                    <p><strong>Начало:</strong> ${formatDate(task.startDate)}</p>
+                    <p><strong>Дедлайн:</strong> ${formatDate(task.deadline)}</p>
+                    <p><strong>Статус:</strong> ${getStatusName(task)}</p>
+                    ${task.resumeDate ? `<p><strong>Возобновление:</strong> ${formatDate(task.resumeDate)}</p>` : ''}
+                    ${task.reason ? `<p><strong>Причина приостановки:</strong> ${task.reason}</p>` : ''}
+                    <p><strong>Описание:</strong> Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam auctor, nisl eu ultricies lacinia, nunc nisl aliquam nisl, eu aliquam nisl nunc eu nisl.</p>
+                    ${materialsHtml}
+                </div>
+            `;
+
+            modal.style.display = 'flex';
+        }
+
+        // Функция для получения имени статуса
+        function getStatusName(task) {
+            if (tasks.done.some(t => t.id === task.id)) return 'Выполнено';
+            if (tasks.waiting.some(t => t.id === task.id)) return 'Ожидание';
+            if (tasks.progress.some(t => t.id === task.id)) return 'В работе';
+            return 'В очереди';
+        }
+
+        // Функция для показа уведомления
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.classList.add('show');
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Функция для имитации обновления данных
+        function simulateDataUpdate() {
+            // Имитируем небольшие изменения в данных
+            tasks.queue.forEach(task => {
+                if (task.progress < 100) {
+                    task.progress += Math.floor(Math.random() * 5);
+                    if (task.progress > 100) task.progress = 100;
+                }
+            });
+
+            tasks.progress.forEach(task => {
+                if (task.progress < 100) {
+                    task.progress += Math.floor(Math.random() * 10);
+                    if (task.progress > 100) task.progress = 100;
+
+                    // Если задача завершена, перемещаем ее в "Выполнено"
+                    if (task.progress === 100) {
+                        tasks.done.push(task);
+                        tasks.progress = tasks.progress.filter(t => t.id !== task.id);
+                    }
+                }
+            });
+
+            // Обновляем отображение
+            renderTasks();
+            showNotification('Данные автоматически обновлены');
+        }
+
+        // Обработчики событий для модальных окон
+        document.getElementById('createTaskBtn').addEventListener('click', () => {
+            document.getElementById('taskModal').style.display = 'flex';
+            // Добавляем пустой материал при открытии формы
+            document.getElementById('materials-container').innerHTML = createMaterialSelect();
+
+            // Установка текущей даты и времени как значения по умолчанию
+            const now = new Date();
+            const nextHour = new Date(now.getTime() + 60 * 60 * 1000);
+
+            document.getElementById('startDate').value = formatDateTimeLocal(now);
+            document.getElementById('deadline').value = formatDateTimeLocal(nextHour);
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            simulateDataUpdate();
+            showNotification('Данные обновлены вручную');
+        });
+
+        // Обработчики кликов на элементах диаграммы Ганта
+        document.addEventListener('click', function (e) {
+            const ganttBar = e.target.closest('.gantt-bar');
+            if (ganttBar) {
+                const taskId = ganttBar.getAttribute('data-task-id');
+                const task = findTaskById(parseInt(taskId));
+                if (task) {
+                    showTaskDetails(task);
+                }
+            }
+        });
+
+        document.querySelectorAll('.close').forEach(close => {
+            close.addEventListener('click', () => {
+                document.querySelectorAll('.modal').forEach(modal => {
+                    modal.style.display = 'none';
+                });
+            });
+        });
+
+        // Функция для поиска задачи по ID
+        function findTaskById(id) {
+            for (const status in tasks) {
+                const task = tasks[status].find(t => t.id === id);
+                if (task) return task;
+            }
+            return null;
+        }
+
+        // Функция для форматирования даты и времени для input[type=datetime-local]
+        function formatDateTimeLocal(date) {
+            return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+                .toISOString()
+                .slice(0, 16);
+        }
+
+        // Обработчик изменения категории
+        document.addEventListener('change', function (e) {
+            if (e.target.classList.contains('material-category')) {
+                const category = e.target.value;
+                const modelSelect = e.target.closest('.material-item').querySelector('.material-model');
+                const availableDiv = e.target.closest('.material-item').querySelector('.available-quantity');
+                const quantityInput = e.target.closest('.material-item').querySelector('.quantity-input');
+
+                // Очищаем и заполняем выпадающий список моделей
+                modelSelect.innerHTML = '<option value="">Выберите модель</option>';
+                if (category && materialsData[category]) {
+                    materialsData[category].forEach(item => {
+                        modelSelect.innerHTML += `<option value="${item.id}">${item.name}</option>`;
+                    });
+                }
+
+                // Сбрасываем информацию о доступности
+                availableDiv.textContent = 'Доступно: 0';
+                availableDiv.className = 'available-quantity';
+                quantityInput.value = 1;
+                quantityInput.max = 0;
+            }
+
+            if (e.target.classList.contains('material-model')) {
+                const categorySelect = e.target.closest('.material-item').querySelector('.material-category');
+                const availableDiv = e.target.closest('.material-item').querySelector('.available-quantity');
+                const quantityInput = e.target.closest('.material-item').querySelector('.quantity-input');
+
+                const category = categorySelect.value;
+                const modelId = e.target.value;
+
+                if (category && modelId) {
+                    const item = materialsData[category].find(i => i.id == modelId);
+                    if (item) {
+                        availableDiv.textContent = `Доступно: ${item.available}`;
+                        availableDiv.className = `available-quantity ${item.available === 0 ? 'low' : ''}`;
+                        quantityInput.max = item.available;
+
+                        if (item.available === 0) {
+                            quantityInput.value = 0;
+                        } else if (quantityInput.value > item.available) {
+                            quantityInput.value = item.available;
+                        }
+                    }
+                }
+            }
+        });
+
+        // Обработчик клика для удаления материала
+        document.addEventListener('click', function (e) {
+            if (e.target.classList.contains('remove-material') || e.target.closest('.remove-material')) {
+                const materialItem = e.target.closest('.material-item');
+                if (materialItem && materialItem.parentElement.children.length > 1) {
+                    materialItem.remove();
+                }
+            }
+        });
+
+        // Обработчик для добавления материала
+        document.getElementById('add-material-btn').addEventListener('click', function () {
+            const materialsContainer = document.getElementById('materials-container');
+            materialsContainer.innerHTML += createMaterialSelect();
+        });
+
+        // Обработчик отправки формы
+        document.getElementById('taskForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            alert('Задача создана! В реальном приложении здесь будет отправка данных на сервер.');
+            document.getElementById('taskModal').style.display = 'none';
+        });
+
+        // Закрытие модального окна при клике вне его
+        window.addEventListener('click', function (e) {
+            document.querySelectorAll('.modal').forEach(modal => {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        });
+
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function () {
+            renderTasks();
+
+            // Установка текущей даты и времени как значения по умолчанию
+            const now = new Date();
+            const nextHour = new Date(now.getTime() + 60 * 60 * 1000);
+
+            document.getElementById('startDate').value = formatDateTimeLocal(now);
+            document.getElementById('deadline').value = formatDateTimeLocal(nextHour);
+
+            // Запускаем автоматическое обновление данных каждые 30 секунд
+            setInterval(simulateDataUpdate, 30000);
+        });
+    </script>
+</body>
+
+</html>
