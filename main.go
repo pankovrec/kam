@@ -9,7 +9,7 @@ import (
 var db *sql.DB
 
 func init() {
-	tmpDB, err := sql.Open("postgres", "dbname= user= password= host=localhost sslmode=disable")
+	tmpDB, err := sql.Open("postgres", "dbname=kam user=kam password=kamkam host=localhost sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -42,6 +42,15 @@ func main() {
 	http.HandleFunc("/saveuser", handleSaveUser)
 	http.HandleFunc("/delete", handleDeleteTask)
 	http.HandleFunc("/deleteuser", handleDeleteUser)
+	// Kanban API endpoints
+	http.HandleFunc("/kanban", handleKanbanPage)
+	http.HandleFunc("/api/kanban/tasks", handleGetKanbanTasks)
+	http.HandleFunc("/api/kanban/tasks/create", handleCreateKanbanTask)
+	http.HandleFunc("/api/kanban/tasks/update-status", handleUpdateKanbanTaskStatus)
+	http.HandleFunc("/api/kanban/tasks/pause", handlePauseKanbanTask)
+	http.HandleFunc("/api/kanban/users", handleGetKanbanUsers)
+	http.HandleFunc("/api/kanban/places", handleGetKanbanPlaces)
+	http.HandleFunc("/api/kanban/materials", handleGetKanbanMaterials)
 
 	// 5. Дефолтный роут (должен быть ПОСЛЕДНИМ)
 	http.HandleFunc("/", handleListTasks)

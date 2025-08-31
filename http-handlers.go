@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -11,6 +12,172 @@ import (
 	"text/template"
 	"time"
 )
+
+// Обработчик для Kanban доски
+func handleKanban(w http.ResponseWriter, r *http.Request) {
+	buf, err := ioutil.ReadFile("www/kanban.html")
+	if err != nil {
+		renderErrorPage(w, err)
+		return
+	}
+
+	t := template.Must(template.New("kanbanPage").Parse(string(buf)))
+	t.Execute(w, nil)
+}
+
+// API для обновления статуса задачи
+func handleUpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Ошибка разбора формы", http.StatusBadRequest)
+		return
+	}
+
+	taskID, _ := strconv.Atoi(r.FormValue("id"))
+	status := r.FormValue("status")
+
+	err := updateTaskStatus(taskID, status)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+}
+
+// Добавляем новые обработчики для Kanban API
+
+func handleGetKanbanTasks(w http.ResponseWriter, r *http.Request) {
+	tasks, err := getKanbanTasks()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tasks)
+}
+
+func handleCreateKanbanTask(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Получен запрос на создание Kanban задачи")
+
+	var taskReq KanbanTaskRequest
+	body, _ := ioutil.ReadAll(r.Body)
+	log.Printf("Тело запроса: %s", string(body))
+
+	// Сбрасываем reader чтобы можно было прочитать again
+	r.Body = ioutil.NopCloser(bytes.NewReader(body))
+
+	if err := json.NewDecoder(r.Body).Decode(&taskReq); err != nil {
+		log.Printf("Ошибка декодирования JSON: %v", err)
+		http.Error(w, fmt.Sprintf("Invalid JSON: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("Декодированная задача: %+v", taskReq)
+
+	taskID, err := insertKanbanTask(taskReq)
+	if err != nil {
+		log.Printf("Ошибка создания задачи: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("Задача успешно создана с ID: %d", taskID)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":  "success",
+		"id":      taskID,
+		"message": "Task created successfully",
+	})
+}
+
+func handleUpdateKanbanTaskStatus(w http.ResponseWriter, r *http.Request) {
+	var update struct {
+		ID     int    `json:"id"`
+		Status string `json:"status"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := updateKanbanTaskStatus(update.ID, update.Status); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  "success",
+		"message": "Task status updated",
+	})
+}
+
+func handlePauseKanbanTask(w http.ResponseWriter, r *http.Request) {
+	var pauseReq PauseRequest
+	if err := json.NewDecoder(r.Body).Decode(&pauseReq); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := pauseKanbanTask(pauseReq.ID, pauseReq.PauseUntil, pauseReq.PauseReason); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  "success",
+		"message": "Task paused successfully",
+	})
+}
+
+func handleGetKanbanUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := getKanbanUsers()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(users)
+}
+
+func handleGetKanbanPlaces(w http.ResponseWriter, r *http.Request) {
+	places, err := getKanbanPlaces()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(places)
+}
+
+func handleGetKanbanMaterials(w http.ResponseWriter, r *http.Request) {
+	materials, err := getKanbanMaterials()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(materials)
+}
+
+func handleKanbanPage(w http.ResponseWriter, r *http.Request) {
+	buf, err := ioutil.ReadFile("www/kanban.html")
+	if err != nil {
+		renderErrorPage(w, err)
+		return
+	}
+
+	t := template.Must(template.New("kanbanPage").Parse(string(buf)))
+	t.Execute(w, nil)
+}
 
 func handleGetCategories(w http.ResponseWriter, r *http.Request) {
 	categories, err := getAllCategories()
@@ -417,47 +584,6 @@ func handleGetItem(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(item)
 }
 
-// func handleSaveItem(w http.ResponseWriter, r *http.Request) {
-// 	fmt.Println("save call")
-// 	if err := r.ParseForm(); err != nil {
-// 		http.Error(w, "Ошибка разбора формы", http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	name := r.FormValue("name")
-// 	qty, _ := strconv.Atoi(r.FormValue("qty"))
-// 	categoryID, _ := strconv.Atoi(r.FormValue("categorie_id"))
-// 	comments := r.FormValue("comments")
-
-// 	// Валидация данных
-// 	if name == "" || qty < 0 {
-// 		http.Error(w, "Некорректные данные", http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	// Проверка существования категории
-// 	var categoryExists bool
-// 	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM categories WHERE id = $1)", categoryID).Scan(&categoryExists)
-// 	if err != nil || !categoryExists {
-// 		http.Error(w, "Категория не существует", http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	// Добавление товара и получение ID
-// 	id, err := insertItem(name, qty, categoryID, comments) // Теперь используем возвращаемый ID
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
-
-//		// Успешный ответ
-//		w.Header().Set("Content-Type", "application/json")
-//		json.NewEncoder(w).Encode(map[string]interface{}{
-//			"status":  "success",
-//			"message": "Товар добавлен",
-//			"id":      id, // Теперь переменная определена
-//		})
-//	}
 func handleSaveItem(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "Ошибка разбора формы", http.StatusBadRequest)

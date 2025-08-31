@@ -15,6 +15,22 @@ func canDeleteCategory(id int) (bool, error) {
 	return count == 0, nil
 }
 
+func checkMaterialAvailability(category, model string, quantity int) (bool, error) {
+	var available int
+	err := db.QueryRow(`
+        SELECT w.qty 
+        FROM warehouse w
+        JOIN categories c ON w.categorie_id = c.id
+        WHERE c.name = $1 AND w.name = $2
+    `, category, model).Scan(&available)
+
+	if err != nil {
+		return false, err
+	}
+
+	return available >= quantity, nil
+}
+
 func getAllCategories() ([]Category, error) {
 	categories := []Category{}
 	rows, err := db.Query("SELECT id, name FROM categories ORDER BY name")

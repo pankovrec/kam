@@ -78,6 +78,68 @@ type IndexPlacesList struct {
 	PlacesList []PlacesList
 }
 
+// Структуры для API ответов
+type UserResponse struct {
+	ID      int    `json:"id"`
+	Name    string `json:"name"`
+	Surname string `json:"surname"`
+}
+
+type PlaceResponse struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+type MaterialResponse struct {
+	ID        int    `json:"id"`
+	Name      string `json:"name"`
+	Category  string `json:"category"`
+	Available int    `json:"available"`
+}
+
+type PauseRequest struct {
+	ID          int       `json:"id"`
+	PauseUntil  time.Time `json:"pause_until"`
+	PauseReason string    `json:"pause_reason"`
+}
+
+// Структура для запроса создания Kanban задачи
+type KanbanTaskRequest struct {
+	UserID      int             `json:"user_id"`
+	PlaceID     int             `json:"place_id"`
+	Description string          `json:"description"`
+	Deadline    string          `json:"deadline"` // Меняем time.Time на string
+	Comments    string          `json:"comments"`
+	Urgent      bool            `json:"urgent"`
+	Status      string          `json:"status"`
+	Materials   []MaterialUsage `json:"materials,omitempty"`
+}
+
+// Структура для ответа с Kanban задачами
+type KanbanTask struct {
+	ID          int             `json:"id"`
+	Title       string          `json:"title"`
+	User        string          `json:"user"`
+	UserID      int             `json:"user_id"`
+	Description string          `json:"description"`
+	StartDate   time.Time       `json:"start_date"`
+	Deadline    time.Time       `json:"deadline"`
+	Status      string          `json:"status"`
+	Urgent      bool            `json:"urgent"`
+	Progress    int             `json:"progress"`
+	Paused      bool            `json:"paused"`
+	PauseUntil  time.Time       `json:"pause_until,omitempty"`
+	PauseReason string          `json:"pause_reason,omitempty"`
+	Comments    string          `json:"comments,omitempty"`
+	Materials   []MaterialUsage `json:"materials,omitempty"`
+}
+
+type MaterialUsage struct {
+	Category string `json:"category"`
+	Model    string `json:"model"`
+	Quantity int    `json:"quantity"`
+}
+
 // Task represents a Task object
 type Task struct {
 	ID                int
@@ -95,6 +157,7 @@ type Task struct {
 	Comments          string
 	CompletedByPetrov bool
 	CompletedByPankov bool
+	IsKanban          bool
 }
 
 type User struct {

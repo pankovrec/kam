@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"strings"
@@ -48,6 +49,353 @@ func getTask(TaskID int) (Task, error) {
 		res.Duration = finishDate.Time.Sub(res.PublicationDate)
 	}
 	return res, err
+}
+
+func getKanbanTasks() ([]KanbanTask, error) {
+	tasks := []KanbanTask{}
+
+	rows, err := db.Query(`
+        SELECT 
+            t.id,
+            t.description as title,
+            CONCAT(u.surname, ' ', u.name) as user,
+            t.user_id,
+            t.description,
+            t.publication_date as start_date,
+            t.finish_date as deadline,
+            COALESCE(t.status, 'queue') as status,
+            t.lenta as urgent,
+            COALESCE(t.progress, 0) as progress,
+            COALESCE(t.paused, false) as paused,
+            t.pause_until,
+            t.pause_reason,
+            t.comments
+        FROM tasks t
+        JOIN users u ON t.user_id = u.id
+        WHERE t.is_kanban = true
+        ORDER BY t.id DESC
+    `)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var task KanbanTask
+		var pauseUntil sql.NullTime
+		var pauseReason sql.NullString
+		var status string // ← Временная переменная для статуса
+
+		err := rows.Scan(
+			&task.ID, &task.Title, &task.User, &task.UserID,
+			&task.Description, &task.StartDate, &task.Deadline,
+			&status, // ← Сканируем во временную переменную
+			&task.Urgent, &task.Progress, &task.Paused,
+			&pauseUntil, &pauseReason, &task.Comments,
+		)
+		if err != nil {
+			return nil, err
+		}
+		// Преобразуем статус
+		if status == "progress" {
+			task.Status = "in-progress"
+		} else {
+			task.Status = status
+		}
+		if pauseUntil.Valid {
+			task.PauseUntil = pauseUntil.Time
+		}
+		if pauseReason.Valid {
+			task.PauseReason = pauseReason.String
+		}
+
+		// Загружаем материалы для задачи
+		materials, err := getTaskMaterials(task.ID)
+		if err == nil {
+			task.Materials = materials
+		}
+
+		tasks = append(tasks, task)
+	}
+
+	return tasks, nil
+}
+
+func getTaskMaterials(taskID int) ([]MaterialUsage, error) {
+	materials := []MaterialUsage{}
+
+	rows, err := db.Query(`
+        SELECT 
+            c.name as category,
+            w.name as model,
+            wh.qty as quantity
+        FROM warehouse_history wh
+        JOIN warehouse w ON wh.item_id = w.id
+        JOIN categories c ON w.categorie_id = c.id
+        WHERE wh.task_id = $1
+    `, taskID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var material MaterialUsage
+		err := rows.Scan(&material.Category, &material.Model, &material.Quantity)
+		if err != nil {
+			return nil, err
+		}
+		materials = append(materials, material)
+	}
+
+	return materials, nil
+}
+
+func insertKanbanTask(task KanbanTaskRequest) (int, error) {
+	log.Printf("Создание задачи: %+v", task)
+
+	// Парсим время дедлайна
+	deadline, err := time.Parse("2006-01-02T15:04", task.Deadline)
+	if err != nil {
+		log.Printf("Ошибка парсинга времени: %v", err)
+		return 0, fmt.Errorf("неверный формат времени дедлайна: %v", err)
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		log.Printf("Ошибка начала транзакции: %v", err)
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	var taskID int
+	duration := deadline.Sub(time.Now())
+
+	log.Printf("Вставка задачи в БД")
+	err = tx.QueryRow(`
+        INSERT INTO tasks (
+            user_id, place_id, description, 
+            publication_date, finish_date, duration,
+            comments, lenta, is_kanban, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, $9)
+        RETURNING id
+    `, task.UserID, task.PlaceID, task.Description,
+		time.Now(), deadline, duration.Seconds(),
+		task.Comments, task.Urgent, task.Status).Scan(&taskID)
+
+	if err != nil {
+		log.Printf("Ошибка вставки задачи: %v", err)
+		return 0, fmt.Errorf("ошибка создания задачи: %v", err)
+	}
+
+	log.Printf("Задача создана с ID: %d", taskID)
+
+	// Обрабатываем материалы только если они есть
+	if task.Materials != nil && len(task.Materials) > 0 {
+		log.Printf("Обработка %d материалов", len(task.Materials))
+
+		for i, material := range task.Materials {
+			// Пропускаем пустые материалы
+			if material.Category == "" || material.Model == "" || material.Quantity <= 0 {
+				log.Printf("Пропускаем материал %d: пустые поля", i)
+				continue
+			}
+
+			log.Printf("Обработка материала %d: %s - %s (%d шт.)", i, material.Category, material.Model, material.Quantity)
+
+			// Находим ID материала
+			var itemID int
+			err := tx.QueryRow(`
+                SELECT w.id 
+                FROM warehouse w 
+                JOIN categories c ON w.categorie_id = c.id 
+                WHERE w.name = $1 AND c.name = $2
+            `, material.Model, material.Category).Scan(&itemID)
+
+			if err != nil {
+				log.Printf("Материал не найден: %s - %s, ошибка: %v", material.Category, material.Model, err)
+				return 0, fmt.Errorf("материал не найден: %s - %s", material.Category, material.Model)
+			}
+
+			log.Printf("Найден ID материала: %d", itemID)
+
+			// Проверяем доступное количество
+			var availableQty int
+			err = tx.QueryRow(`
+                SELECT qty FROM warehouse WHERE id = $1
+            `, itemID).Scan(&availableQty)
+
+			if err != nil {
+				log.Printf("Ошибка проверки количества: %v", err)
+				return 0, fmt.Errorf("ошибка проверки доступности материала: %v", err)
+			}
+
+			log.Printf("Доступное количество: %d, требуется: %d", availableQty, material.Quantity)
+
+			if availableQty < material.Quantity {
+				log.Printf("Недостаточно материала: доступно %d, требуется %d", availableQty, material.Quantity)
+				return 0, fmt.Errorf("недостаточно материала: %s (доступно: %d)", material.Model, availableQty)
+			}
+
+			// Уменьшаем количество на складе
+			_, err = tx.Exec(`
+                UPDATE warehouse SET qty = qty - $1 WHERE id = $2
+            `, material.Quantity, itemID)
+			if err != nil {
+				log.Printf("Ошибка обновления склада: %v", err)
+				return 0, fmt.Errorf("ошибка списания материала: %v", err)
+			}
+
+			// Записываем в историю
+			_, err = tx.Exec(`
+                INSERT INTO warehouse_history (item_id, task_id, qty, operation_date)
+                VALUES ($1, $2, $3, NOW())
+            `, itemID, taskID, material.Quantity)
+			if err != nil {
+				log.Printf("Ошибка записи в историю: %v", err)
+				return 0, fmt.Errorf("ошибка записи истории материала: %v", err)
+			}
+
+			log.Printf("Материал успешно обработан")
+		}
+	} else {
+		log.Printf("Материалы не указаны, пропускаем обработку")
+	}
+
+	if err := tx.Commit(); err != nil {
+		log.Printf("Ошибка коммита транзакции: %v", err)
+		return 0, fmt.Errorf("ошибка сохранения задачи: %v", err)
+	}
+
+	log.Printf("Задача успешно создана и сохранена")
+	return taskID, nil
+}
+
+func getMaterialInfo(categoryName, modelName string) (int, int, error) {
+	var itemID, availableQty int
+	err := db.QueryRow(`
+        SELECT w.id, w.qty
+        FROM warehouse w
+        JOIN categories c ON w.categorie_id = c.id
+        WHERE c.name = $1 AND w.name = $2
+    `, categoryName, modelName).Scan(&itemID, &availableQty)
+
+	return itemID, availableQty, err
+}
+func updateKanbanTaskStatus(taskID int, status string) error {
+	_, err := db.Exec(`
+        UPDATE tasks 
+        SET status = $1, 
+            paused = false,
+            pause_until = NULL,
+            pause_reason = NULL
+        WHERE id = $2 AND is_kanban = true
+    `, status, taskID)
+	return err
+}
+
+func pauseKanbanTask(taskID int, pauseUntil time.Time, pauseReason string) error {
+	_, err := db.Exec(`
+        UPDATE tasks 
+        SET status = 'waiting',
+            paused = true,
+            pause_until = $1,
+            pause_reason = $2
+        WHERE id = $3 AND is_kanban = true
+    `, pauseUntil, pauseReason, taskID)
+	return err
+}
+
+func getKanbanUsers() ([]UserResponse, error) {
+	users := []UserResponse{}
+
+	rows, err := db.Query(`
+        SELECT id, name, surname 
+        FROM users 
+        WHERE invisible = false 
+        ORDER BY surname, name
+    `)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var user UserResponse
+		err := rows.Scan(&user.ID, &user.Name, &user.Surname)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+
+	return users, nil
+}
+
+func getKanbanPlaces() ([]PlaceResponse, error) {
+	places := []PlaceResponse{}
+
+	rows, err := db.Query(`
+        SELECT id, name 
+        FROM places 
+        ORDER BY name
+    `)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var place PlaceResponse
+		err := rows.Scan(&place.ID, &place.Name)
+		if err != nil {
+			return nil, err
+		}
+		places = append(places, place)
+	}
+
+	return places, nil
+}
+
+func getKanbanMaterials() (map[string][]MaterialResponse, error) {
+	materials := make(map[string][]MaterialResponse)
+
+	rows, err := db.Query(`
+        SELECT 
+            w.id,
+            w.name,
+            c.name as category,
+            w.qty as available
+        FROM warehouse w
+        JOIN categories c ON w.categorie_id = c.id
+        WHERE w.qty > 0
+        ORDER BY c.name, w.name
+    `)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var material MaterialResponse
+		err := rows.Scan(&material.ID, &material.Name, &material.Category, &material.Available)
+		if err != nil {
+			return nil, err
+		}
+
+		if materials[material.Category] == nil {
+			materials[material.Category] = []MaterialResponse{}
+		}
+		materials[material.Category] = append(materials[material.Category], material)
+	}
+
+	return materials, nil
+}
+
+// Обновление статуса задачи
+func updateTaskStatus(taskID int, status string) error {
+	_, err := db.Exec(`UPDATE tasks SET status = $1 WHERE id = $2`, status, taskID)
+	return err
 }
 
 func allTasks(startDate, endDate time.Time) ([]Task, error) {
