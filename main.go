@@ -51,6 +51,7 @@ func main() {
 	http.HandleFunc("/api/kanban/users", handleGetKanbanUsers)
 	http.HandleFunc("/api/kanban/places", handleGetKanbanPlaces)
 	http.HandleFunc("/api/kanban/materials", handleGetKanbanMaterials)
+	http.HandleFunc("/api/kanban/tasks/complete", handleCompleteKanbanTask)
 
 	// 5. Дефолтный роут (должен быть ПОСЛЕДНИМ)
 	http.HandleFunc("/", handleListTasks)

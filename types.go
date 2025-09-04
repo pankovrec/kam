@@ -137,6 +137,7 @@ type KanbanTask struct {
 type MaterialUsage struct {
 	Category string `json:"category"`
 	Model    string `json:"model"`
+	ModelID  int    `json:"model_id"` // Добавьте это поле
 	Quantity int    `json:"quantity"`
 }
 
@@ -186,6 +187,98 @@ type UserList struct {
 type PlacesList struct {
 	ID   int
 	Name string
+}
+type Equipment struct {
+	ID     int
+	UserID int
+
+	// Основная информация о ПК
+	PCName              string
+	ConnectionType      string
+	WindowsVersion      string
+	OfficeVersion       string
+	RestorePointEnabled bool
+	HasZoom             bool
+	HasSynapse          bool
+	PCAutoUpdate        bool   `json:"pc_auto_update"`
+	PCYear              string `json:"pc_year"`
+	IPAddress           string `json:"ip_address"`
+	FreeSpaceC          string `json:"free_space_c"`
+	FreeSpaceD          string `json:"free_space_d"`
+	Monitors            string `json:"monitors"`
+	Printers            string `json:"printers"`
+	KESVersion          string `json:"kes_version"`
+	KSCVersion          string `json:"ksc_version"`
+	SynapseVersion      string `json:"synapse_version"`
+	ZoomVersion         string `json:"zoom_version"`
+
+	// Телефон
+	PhoneNumber string
+	PhoneModel  string
+
+	// Характеристики ПК
+	CPU         string
+	CPUYear     int
+	RAM         string
+	Motherboard string
+	GPU         string
+	Storage1    string
+	Storage2    string
+	Storage3    string
+
+	CreatedAt time.Time
+	UpdatedAt time.Time
+
+	// Периферия
+	Monitor       string
+	SecondMonitor string
+
+	// Оборудование со склада - ДОБАВИТЬ
+	Keyboard           string `json:"keyboard"`
+	Mouse              string `json:"mouse"`
+	KeyboardMouseCombo string `json:"keyboard_mouse_combo"`
+	Webcam             string `json:"webcam"`
+	Speakers           string `json:"speakers"`
+	Headset            string `json:"headset"`
+	UPS                string `json:"ups"`
+	Cartridges         string `json:"cartridges"` // вместо PrinterCartridges
+
+	// Ноутбук
+	// Ноутбук - ДОБАВИТЬ
+	LaptopAutoUpdate     bool   `json:"laptop_auto_update"`
+	LaptopModel          string `json:"laptop_model"`
+	LaptopConnectionType string `json:"laptop_connection_type"`
+	LaptopIPAddress      string `json:"laptop_ip_address"`
+	LaptopYear           string `json:"laptop_year"`
+	LaptopFreeSpaceC     string `json:"laptop_free_space_c"`
+	LaptopFreeSpaceD     string `json:"laptop_free_space_d"`
+	LaptopMonitors       string `json:"laptop_monitors"`
+	LaptopPrinters       string `json:"laptop_printers"`
+	LaptopKESVersion     string `json:"laptop_kes_version"`
+	LaptopKSCVersion     string `json:"laptop_ksc_version"`
+	LaptopSynapseVersion string `json:"laptop_synapse_version"`
+	LaptopZoomVersion    string `json:"laptop_zoom_version"`
+	FortiClientVersion   string `json:"forti_client_version"`
+	LaptopName           string
+	LaptopIssueYear      int
+	LaptopWindowsVersion string
+	LaptopOfficeVersion  string
+	LaptopVPNVersion     string
+	LaptopHasSkype       bool
+	LaptopHasSynapse     bool
+	LaptopHasZoom        bool
+	LaptopLastCheckDate  time.Time
+
+	// Другое оборудование
+	Printer           string
+	PrinterCartridges string
+	PrinterAddress    string
+
+	OtherEquipment string
+
+	// Примечания
+	Notes    string
+	Problems string
 }
 
 // PublicationDateStr returns a sanitized Publication Date in the format YYYY-MM-DD

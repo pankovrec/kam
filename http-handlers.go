@@ -25,6 +25,114 @@ func handleKanban(w http.ResponseWriter, r *http.Request) {
 	t.Execute(w, nil)
 }
 
+func handleCompleteKanbanTask(w http.ResponseWriter, r *http.Request) {
+
+	var completeReq struct {
+		ID         int             `json:"id"`
+		Comments   string          `json:"comments"`
+		Materials  []MaterialUsage `json:"materials"`
+		FinishDate time.Time       `json:"finish_date"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&completeReq); err != nil {
+		log.Printf("Ошибка декодирования JSON: %v", err)
+		http.Error(w, "Invalid JSON: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	finishDate := completeReq.FinishDate
+	finishDate = finishDate.Add(5 * time.Hour)
+	// if err != nil {
+	// 	log.Printf("Ошибка парсинга даты: %v", err)
+	// 	http.Error(w, "Invalid date format", http.StatusBadRequest)
+	// 	return
+	// }
+
+	//finishDateUTC := finishDate.UTC()
+	log.Printf("Завершение (местрнное): %v", finishDate)
+
+	// Начинаем транзакцию
+	tx, err := db.Begin()
+	if err != nil {
+		log.Printf("Ошибка начала транзакции: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
+
+	// Обновляем задачу
+	result, err := tx.Exec(`
+        UPDATE tasks 
+        SET status = 'done', 
+            finish_date = $1,
+            comments = COALESCE($2, comments),
+            progress = 100
+        WHERE id = $3 AND is_kanban = true
+    `, finishDate, completeReq.Comments, completeReq.ID)
+
+	if err != nil {
+		log.Printf("Ошибка обновления задачи: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	log.Printf("Обновлено строк: %d", rowsAffected)
+
+	// Обрабатываем материалы
+	for _, material := range completeReq.Materials {
+		log.Printf("Обработка материала: %s - %s (ID: %d) (%d шт.)",
+			material.Category, material.Model, material.ModelID, material.Quantity)
+
+		// Используем直接 ID материала
+		var currentQty int
+		err := tx.QueryRow("SELECT qty FROM warehouse WHERE id = $1 FOR UPDATE", material.ModelID).Scan(&currentQty)
+
+		if err != nil {
+			log.Printf("Материал не найден по ID %d: %v", material.ModelID, err)
+			continue
+		}
+
+		if currentQty < material.Quantity {
+			log.Printf("Недостаточно материала ID %d: доступно %d, требуется %d",
+				material.ModelID, currentQty, material.Quantity)
+			continue
+		}
+
+		// Уменьшаем количество
+		_, err = tx.Exec("UPDATE warehouse SET qty = qty - $1 WHERE id = $2", material.Quantity, material.ModelID)
+		if err != nil {
+			log.Printf("Ошибка списания материала: %v", err)
+			continue
+		}
+
+		// Записываем в историю
+		_, err = tx.Exec(
+			"INSERT INTO warehouse_history(item_id, task_id, qty, operation_date) VALUES($1, $2, $3, NOW())",
+			material.ModelID, completeReq.ID, material.Quantity)
+
+		if err != nil {
+			log.Printf("Ошибка записи в историю: %v", err)
+		} else {
+			log.Printf("Материал успешно списан: ID %d, %s (%d шт.)",
+				material.ModelID, material.Model, material.Quantity)
+		}
+	}
+
+	// Коммитим транзакцию
+	if err := tx.Commit(); err != nil {
+		log.Printf("Ошибка коммита транзакции: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  "success",
+		"message": "Task completed successfully",
+	})
+}
+
 // API для обновления статуса задачи
 func handleUpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {

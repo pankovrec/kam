@@ -154,7 +154,6 @@ func getTaskMaterials(taskID int) ([]MaterialUsage, error) {
 func insertKanbanTask(task KanbanTaskRequest) (int, error) {
 	log.Printf("Создание задачи: %+v", task)
 
-	// Парсим время дедлайна
 	deadline, err := time.Parse("2006-01-02T15:04", task.Deadline)
 	if err != nil {
 		log.Printf("Ошибка парсинга времени: %v", err)
@@ -173,24 +172,16 @@ func insertKanbanTask(task KanbanTaskRequest) (int, error) {
 
 	log.Printf("Вставка задачи в БД")
 	err = tx.QueryRow(`
-        INSERT INTO tasks (
-            user_id, place_id, description, 
-            publication_date, finish_date, duration,
-            comments, lenta, is_kanban, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, $9)
-        RETURNING id
-    `, task.UserID, task.PlaceID, task.Description,
+	    INSERT INTO tasks (
+	        user_id, place_id, description,
+	        publication_date, finish_date, duration,
+	        comments, lenta, is_kanban, status
+	    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, $9)
+	    RETURNING id
+	`, task.UserID, task.PlaceID, task.Description,
 		time.Now(), deadline, duration.Seconds(),
 		task.Comments, task.Urgent, task.Status).Scan(&taskID)
 
-	if err != nil {
-		log.Printf("Ошибка вставки задачи: %v", err)
-		return 0, fmt.Errorf("ошибка создания задачи: %v", err)
-	}
-
-	log.Printf("Задача создана с ID: %d", taskID)
-
-	// Обрабатываем материалы только если они есть
 	if task.Materials != nil && len(task.Materials) > 0 {
 		log.Printf("Обработка %d материалов", len(task.Materials))
 
@@ -295,15 +286,19 @@ func updateKanbanTaskStatus(taskID int, status string) error {
 }
 
 func pauseKanbanTask(taskID int, pauseUntil time.Time, pauseReason string) error {
+
+	log.Printf("Приостановка до (местное): %v", pauseUntil)
+
 	_, err := db.Exec(`
-        UPDATE tasks 
-        SET status = 'waiting',
-            paused = true,
-            pause_until = $1,
-            pause_reason = $2
-        WHERE id = $3 AND is_kanban = true
-    `, pauseUntil, pauseReason, taskID)
+		  UPDATE tasks 
+		  SET status = 'waiting',
+			  paused = true,
+			  pause_until = $1,
+			  pause_reason = $2
+		  WHERE id = $3 AND is_kanban = true
+	  `, pauseUntil, pauseReason, taskID)
 	return err
+
 }
 
 func getKanbanUsers() ([]UserResponse, error) {

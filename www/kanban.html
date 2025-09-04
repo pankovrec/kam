@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Канбан-доска с улучшенной видимостью</title>
+    <title>Оперативная работа | Ключевые пользователи</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -157,6 +157,51 @@
         .task-title {
             font-weight: bold;
             font-size: 16px;
+        }
+
+        .task-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn-action {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-start {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .btn-pause {
+            background-color: #FF9800;
+            color: white;
+        }
+
+        .btn-complete {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        .btn-resume {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .btn-action:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
 
         .urgent-badge {
@@ -683,13 +728,14 @@
             }
         }
     </style>
+    <link rel="stylesheet" type="text/css" href="/entensys-xscript/abl.css" />
 </head>
 
 <body>
     <header>
         <div class="logo">
             <i class="fas fa-tasks"></i>
-            <span>Канбан-доска с улучшенной видимостью</span>
+            <span>Оперативная работа</span>
         </div>
         <div class="controls">
             <button class="btn-primary" id="createTaskBtn">
@@ -709,7 +755,7 @@
     </header>
 
     <div class="gantt-view">
-        <h2>Диаграмма Ганта с временными интервалами</h2>
+
 
         <!-- Временная шкала -->
         <div class="gantt-timescale" id="ganttTimescale">
@@ -895,7 +941,22 @@
         let materialsData = {};
         let users = [];
         let places = [];
+        function adjustForTimezone(dateString) {
+            if (!dateString) return null;
 
+            const date = new Date(dateString);
+            // Добавляем 5 часов для Екатеринбурга (UTC+5)
+            date.setHours(date.getHours() + 5);
+            return date;
+        }
+
+        function formatForInput(date) {
+            if (!date) return '';
+            // Корректируем для отображения в input[type=datetime-local]
+            const adjusted = new Date(date);
+            adjusted.setMinutes(adjusted.getMinutes() - adjusted.getTimezoneOffset());
+            return adjusted.toISOString().slice(0, 16);
+        }
         // Функция для загрузки пользователей
         function loadUsers() {
             return fetch('/api/kanban/users')
@@ -981,7 +1042,86 @@
         function clearMaterialsState() {
             localStorage.removeItem('kanbanMaterials');
         }
+        function renderGanttChart(tasks) {
+            const timescale = document.getElementById('ganttTimescale');
+            const grid = document.getElementById('ganttGrid');
 
+            // Очищаем предыдущие элементы
+            timescale.innerHTML = '';
+            grid.querySelectorAll('.gantt-bar').forEach(el => el.remove());
+
+            // Находим диапазон дат задач
+            const dates = tasks.map(task => new Date(task.startDate))
+                .concat(tasks.map(task => new Date(task.deadline)));
+
+            const minDate = new Date(Math.min(...dates));
+            const maxDate = new Date(Math.max(...dates));
+
+            // Добавляем немного padding к датам
+            minDate.setDate(minDate.getDate() - 2);
+            maxDate.setDate(maxDate.getDate() + 2);
+
+            // Генерируем временную шкалу на основе реальных дат
+            const days = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24));
+
+            // Создаем периоды по неделям
+            const periods = [];
+            let currentDate = new Date(minDate);
+
+            while (currentDate <= maxDate) {
+                periods.push(new Date(currentDate));
+                currentDate.setDate(currentDate.getDate() + 7);
+            }
+
+            periods.forEach(date => {
+                const periodEl = document.createElement('div');
+                periodEl.className = 'gantt-period';
+                periodEl.textContent = date.toLocaleDateString('ru-RU', {
+                    day: 'numeric',
+                    month: 'short'
+                }).toUpperCase();
+                timescale.appendChild(periodEl);
+            });
+
+            // Позиционируем линии времени
+            const todayLine = document.getElementById('ganttToday');
+            const timeIndicator = document.getElementById('ganttTimeIndicator');
+            const now = new Date();
+
+            // Позиция сегодняшней линии
+            const todayPos = ((now - minDate) / (maxDate - minDate)) * 100;
+            todayLine.style.left = `${Math.max(0, Math.min(100, todayPos))}%`;
+
+            // Добавляем задачи на диаграмму
+            tasks.forEach((task, index) => {
+                const start = new Date(task.startDate);
+                const end = new Date(task.deadline);
+
+                const left = ((start - minDate) / (maxDate - minDate)) * 100;
+                const width = ((end - start) / (maxDate - minDate)) * 100;
+
+                const bar = document.createElement('div');
+                bar.className = `gantt-bar ${task.status} ${task.urgent ? 'urgent' : ''} ${task.paused ? 'paused' : ''}`;
+                bar.setAttribute('data-task-id', task.id);
+
+                bar.style.left = `${Math.max(0, left)}%`;
+                bar.style.width = `${Math.max(1, Math.min(100, width))}%`;
+
+                if (task.paused) {
+                    bar.innerHTML = `<div class="gantt-bar-text"><i class="fas fa-pause"></i> ${task.title}</div>`;
+                } else if (task.urgent) {
+                    bar.innerHTML = `<div class="gantt-bar-text"><i class="fas fa-bolt"></i> ${task.title}</div>`;
+                } else {
+                    bar.innerHTML = `<div class="gantt-bar-text">${task.title}</div>`;
+                }
+
+                bar.addEventListener('click', () => {
+                    showTaskDetails(task);
+                });
+
+                grid.appendChild(bar);
+            });
+        }
         // Функция для загрузки задач Kanban
         function loadKanbanTasks() {
             showLoadingState();
@@ -1055,18 +1195,23 @@
                 taskElement.className = `task-card ${task.urgent ? 'urgent' : ''} ${task.paused ? 'paused' : ''} ${status === 'done' ? 'done' : ''}`;
                 taskElement.setAttribute('data-id', task.id);
 
+
+
                 const startTime = formatTime(new Date(task.startDate));
                 const endTime = formatTime(new Date(task.deadline));
 
                 let html = `
-            <div class="task-header">
-                <div class="task-title">${task.title}</div>
-                ${task.urgent ? '<div class="urgent-badge"><i class="fas fa-bolt"></i> Срочно!</div>' : ''}
-                ${task.paused ? '<div class="paused-badge"><i class="fas fa-pause"></i> Приостановлено</div>' : ''}
-            </div>
-            <div class="task-info">
-                <div><i class="fas fa-user"></i> ${task.user}</div>
-                <div><i class="fas fa-clock"></i> ${startTime} - ${endTime}</div>
+<div class="task-header">
+    <div class="task-title">${task.title} <span style="font-size: 12px; color: #666; margin-left: 5px;">#${task.id}</span></div>
+    ${task.urgent ? '<div class="urgent-badge"><i class="fas fa-bolt"></i> Срочно!</div>' : ''}
+    ${task.paused ? '<div class="paused-badge"><i class="fas fa-pause"></i> Приостановлено</div>' : ''}
+</div>
+<div class="task-info">
+    <div><i class="fas fa-user"></i> ${task.user}</div>
+    <div><i class="fas fa-calendar-plus"></i> ${formatDateTime(task.startDate)}</div>
+</div>
+      <div class="task-info">
+                <div><i class="fas fa-clock" style="color: #E91E63;"></i> <span class="task-deadline">${formatDateTime(task.deadline)}</span></div>
             </div>
         `;
 
@@ -1086,12 +1231,6 @@
             </div>
         `;
 
-                html += `
-            <div class="task-meta">
-                <div>Дедлайн: <span class="task-deadline">${formatDate(task.deadline)}</span></div>
-                <div>#${task.id}</div>
-            </div>
-        `;
 
                 if (task.paused && task.pauseUntil && task.pauseUntil !== "0001-01-01T00:00:00Z" && task.pauseReason) {
                     html += `
@@ -1102,95 +1241,346 @@
             `;
                 }
 
-                taskElement.innerHTML = html;
-
-                // Добавляем обработчик клика для просмотра деталей
-                taskElement.addEventListener('click', () => {
-                    showTaskDetails(task);
-                });
-
-                list.appendChild(taskElement);
-            });
-        }
-
-
-        // Функция для отрисовки диаграммы Ганта
-        function renderGanttChart(tasks) {
-            const timescale = document.getElementById('ganttTimescale');
-            const grid = document.getElementById('ganttGrid');
-
-            // Очищаем предыдущие элементы
-            timescale.innerHTML = '';
-
-            // Удаляем старые бары задач, кроме рабочих часов и линий
-            const elementsToRemove = grid.querySelectorAll('.gantt-row, .gantt-bar');
-            elementsToRemove.forEach(el => el.remove());
-
-            // Генерация временной шкалы (упрощенная версия)
-            const periods = ['21 НОЯ', '28 НОЯ', '5 ДЕК', '12 ДЕК', '19 ДЕК', '26 ДЕК', '2 ЯНВ', '9 ЯНВ'];
-            periods.forEach(period => {
-                const periodEl = document.createElement('div');
-                periodEl.className = 'gantt-period';
-                periodEl.textContent = period;
-                timescale.appendChild(periodEl);
-            });
-
-            // Позиционируем линии времени
-            const todayLine = document.getElementById('ganttToday');
-            const timeIndicator = document.getElementById('ganttTimeIndicator');
-
-            todayLine.style.left = '35%';
-            timeIndicator.style.left = '42%';
-
-            // Добавляем задачи на диаграмму
-            tasks.forEach((task, index) => {
-                const row = document.createElement('div');
-                row.className = 'gantt-row';
-
-                const rowLabel = document.createElement('div');
-                rowLabel.className = 'gantt-row-label';
-                rowLabel.textContent = task.title;
-                row.appendChild(rowLabel);
-
-                // Создаем бар задачи
-                const bar = document.createElement('div');
-                bar.className = `gantt-bar ${task.status} ${task.urgent ? 'urgent' : ''} ${task.paused ? 'paused' : ''}`;
-                bar.setAttribute('data-task-id', task.id);
-
-                // Позиция и размеры (упрощенно)
-                const left = 10 + (index * 15) % 80;
-                const width = 10 + (task.id % 15);
-
-                bar.style.left = `${left}%`;
-                bar.style.width = `${width}%`;
-
-                if (task.paused) {
-                    bar.innerHTML = `<div class="gantt-bar-text"><i class="fas fa-pause"></i> ${task.title}</div>`;
-                } else if (task.urgent) {
-                    bar.innerHTML = `<div class="gantt-bar-text"><i class="fas fa-bolt"></i> ${task.title}</div>`;
-                } else {
-                    bar.innerHTML = `<div class="gantt-bar-text">${task.title}</div>`;
+                // Добавляем кнопки управления (кроме выполненных задач)
+                if (status !== 'done') {
+                    html += `
+                <div class="task-actions" style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
+                    ${status === 'queue' ? `
+                        <button class="btn-action btn-start" data-id="${task.id}" title="Взять в работу">
+                            <i class="fas fa-play"></i>
+                        </button>
+                    ` : ''}
+                    
+                    ${status === 'in-progress' ? `
+                        <button class="btn-action btn-pause" data-id="${task.id}" title="Приостановить">
+                            <i class="fas fa-pause"></i>
+                        </button>
+                        <button class="btn-action btn-complete" data-id="${task.id}" title="Завершить">
+                            <i class="fas fa-check"></i>
+                        </button>
+                    ` : ''}
+                    
+                    ${status === 'waiting' ? `
+                        <button class="btn-action btn-resume" data-id="${task.id}" title="Возобновить">
+                            <i class="fas fa-play"></i>
+                        </button>
+                    ` : ''}
+                </div>
+            `;
                 }
 
-                bar.addEventListener('click', () => {
-                    showTaskDetails(task);
-                });
+                taskElement.innerHTML = html;
+                list.appendChild(taskElement);
+            });
 
-                grid.appendChild(row);
-                grid.appendChild(bar);
+            // Добавляем обработчики для кнопок
+            addTaskActionHandlers();
+        }
+
+        function addTaskActionHandlers() {
+            // Кнопка "Взять в работу"
+            document.querySelectorAll('.btn-start').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const taskId = btn.getAttribute('data-id');
+                    updateTaskStatus(taskId, 'in-progress');
+                });
+            });
+
+            // Кнопка "Приостановить"
+            document.querySelectorAll('.btn-pause').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const taskId = btn.getAttribute('data-id');
+                    showPauseModal(taskId);
+                });
+            });
+
+            // Кнопка "Завершить"
+            document.querySelectorAll('.btn-complete').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const taskId = btn.getAttribute('data-id');
+                    showCompleteModal(taskId);
+                });
+            });
+
+            // Кнопка "Возобновить"
+            document.querySelectorAll('.btn-resume').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const taskId = btn.getAttribute('data-id');
+                    updateTaskStatus(taskId, 'in-progress');
+                });
             });
         }
 
-        // Функция для показа деталей задачи
+        function showPauseModal(taskId) {
+            const modalHtml = `
+        <div class="modal" id="pauseModal">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h2>Приостановить задачу</h2>
+                    <span class="close">&times;</span>
+                </div>
+                <div class="form-group">
+                    <label for="pauseUntilDate">Приостановить до:</label>
+                    <input type="datetime-local" id="pauseUntilDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="pauseReasonText">Причина приостановки:</label>
+                    <textarea id="pauseReasonText" rows="3" placeholder="Укажите причину приостановки" required></textarea>
+                </div>
+                <button class="btn-primary" id="confirmPause">Приостановить</button>
+            </div>
+        </div>
+    `;
+
+            // Добавляем модальное окно
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            const modal = document.getElementById('pauseModal');
+            modal.style.display = 'flex';
+
+            // Устанавливаем минимальную дату (текущее время + 1 час)
+            const minDate = new Date();
+            minDate.setHours(minDate.getHours() + 1);
+            document.getElementById('pauseUntilDate').min = minDate.toISOString().slice(0, 16);
+
+            // Обработчик подтверждения
+            document.getElementById('confirmPause').addEventListener('click', () => {
+                const pauseUntil = document.getElementById('pauseUntilDate').value;
+                const pauseReason = document.getElementById('pauseReasonText').value;
+
+                if (!pauseUntil || !pauseReason) {
+                    showNotification('Заполните все поля', 'error');
+                    return;
+                }
+
+                pauseTask(taskId, pauseUntil, pauseReason);
+                modal.remove();
+            });
+
+            // Закрытие модального окна
+            modal.querySelector('.close').addEventListener('click', () => modal.remove());
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.remove();
+            });
+        }
+
+        function showCompleteModal(taskId) {
+            // Загружаем материалы для выбора
+            fetch('/api/kanban/materials')
+                .then(response => response.json())
+                .then(materialsData => {
+                    const modalHtml = `
+                <div class="modal" id="completeModal">
+                    <div class="modal-content" style="max-width: 600px;">
+                        <div class="modal-header">
+                            <h2>Завершить задачу</h2>
+                            <span class="close">&times;</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="completeComment">Комментарий к выполнению:</label>
+                            <textarea id="completeComment" rows="3" placeholder="Опишите выполнение задачи"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Использованные материалы:</label>
+                            <div id="materials-container-complete">
+                                ${createMaterialSelect()}
+                            </div>
+                            <button type="button" class="btn-secondary" id="add-material-complete" style="margin-top: 10px;">
+                                <i class="fas fa-plus"></i> Добавить материал
+                            </button>
+                        </div>
+                        <button type="button" class="btn-primary" id="confirmComplete">Завершить задачу</button>
+                    </div>
+                </div>
+            `;
+
+                    document.body.insertAdjacentHTML('beforeend', modalHtml);
+                    const modal = document.getElementById('completeModal');
+                    modal.style.display = 'flex';
+
+                    // Инициализация материалов
+                    initCompleteModalMaterials(materialsData);
+
+                    // Обработчики
+                    document.getElementById('add-material-complete').addEventListener('click', () => {
+                        document.getElementById('materials-container-complete').innerHTML += createMaterialSelect();
+                        initCompleteModalMaterials(materialsData);
+                    });
+
+                    // Правильный обработчик для кнопки завершения
+                    document.getElementById('confirmComplete').addEventListener('click', function () {
+                        completeTaskWithMaterials(taskId);
+                        modal.remove();
+                    });
+
+                    // Обработчик закрытия модального окна
+                    const closeBtn = modal.querySelector('.close');
+                    closeBtn.addEventListener('click', function () {
+                        modal.remove();
+                    });
+
+                    // Закрытие при клике вне модального окна
+                    modal.addEventListener('click', function (e) {
+                        if (e.target === modal) {
+                            modal.remove();
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('Ошибка загрузки материалов:', error);
+                    showNotification('Ошибка загрузки материалов', 'error');
+                });
+        }
+
+        // Новая функция для инициализации материалов в модальном окне завершения
+        function initCompleteModalMaterials(materialsData) {
+            document.querySelectorAll('#materials-container-complete .material-category').forEach(select => {
+                select.innerHTML = '<option value="">Выберите категорию</option>';
+                Object.keys(materialsData).forEach(category => {
+                    select.innerHTML += `<option value="${category}">${category}</option>`;
+                });
+
+                select.addEventListener('change', function () {
+                    const category = this.value;
+                    const modelSelect = this.closest('.material-item').querySelector('.material-model');
+                    const availableDiv = this.closest('.material-item').querySelector('.available-quantity');
+                    const quantityInput = this.closest('.material-item').querySelector('.quantity-input');
+
+                    modelSelect.innerHTML = '<option value="">Выберите модель</option>';
+                    if (category && materialsData[category]) {
+                        materialsData[category].forEach(item => {
+                            modelSelect.innerHTML += `<option value="${item.id}">${item.name} (ID: ${item.id})</option>`;
+                        });
+                    }
+
+                    availableDiv.textContent = 'Доступно: 0';
+                    availableDiv.className = 'available-quantity';
+                    quantityInput.value = 1;
+                    quantityInput.max = 0;
+                });
+            });
+
+            document.querySelectorAll('#materials-container-complete .material-model').forEach(select => {
+                select.addEventListener('change', function () {
+                    const categorySelect = this.closest('.material-item').querySelector('.material-category');
+                    const availableDiv = this.closest('.material-item').querySelector('.available-quantity');
+                    const quantityInput = this.closest('.material-item').querySelector('.quantity-input');
+
+                    const category = categorySelect.value;
+                    const modelId = this.value; // Теперь это ID, а не название
+
+                    if (category && modelId) {
+                        const item = materialsData[category].find(i => i.id == modelId);
+                        if (item) {
+                            availableDiv.textContent = `Доступно: ${item.available}`;
+                            availableDiv.className = `available-quantity ${item.available === 0 ? 'low' : ''}`;
+                            quantityInput.max = item.available;
+
+                            if (item.available === 0) {
+                                quantityInput.value = 0;
+                            } else if (quantityInput.value > item.available) {
+                                quantityInput.value = item.available;
+                            }
+                        }
+                    }
+                });
+            });
+        }
+        function completeTaskWithMaterials(taskId) {
+            const comment = document.getElementById('completeComment').value;
+            const materials = [];
+
+            // Собираем материалы
+            document.querySelectorAll('#materials-container-complete .material-item').forEach(item => {
+                const category = item.querySelector('.material-category').value;
+                const modelId = item.querySelector('.material-model').value; // Это теперь ID
+                const modelName = item.querySelector('.material-model').options[item.querySelector('.material-model').selectedIndex].text;
+                const quantity = parseInt(item.querySelector('.quantity-input').value);
+
+                // Добавляем только полностью заполненные материалы
+                if (category && modelId && quantity > 0) {
+                    materials.push({
+                        category: category,
+                        model: modelName.split(' (ID:')[0], // Берем только название без ID
+                        model_id: parseInt(modelId), // Добавляем ID для сервера
+                        quantity: quantity
+                    });
+                }
+            });
+
+            console.log('Данные для отправки:', {
+                id: parseInt(taskId), // Преобразуем в число
+                comments: comment,
+                materials: materials,
+                finish_date: new Date().toISOString()
+            });
+
+            // Обновляем задачу
+            fetch('/api/kanban/tasks/complete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    id: parseInt(taskId), // Преобразуем taskId в число
+                    comments: comment,
+                    materials: materials,
+                    finish_date: new Date().toISOString()
+                })
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            throw new Error(text || 'Ошибка завершения задачи');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'success') {
+                        loadKanbanTasks();
+                        showNotification('Задача завершена!', 'success');
+                    } else {
+                        showNotification('Ошибка: ' + (data.message || 'Неизвестная ошибка'), 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка завершения задачи:', error);
+                    showNotification('Ошибка завершения задачи: ' + error.message, 'error');
+                });
+        }
+        // Добавьте эту функцию перед функцией showTaskDetails
+        function getStatusName(status) {
+            const statusNames = {
+                'queue': 'Очередь',
+                'in-progress': 'В работе',
+                'waiting': 'Ожидание',
+                'done': 'Выполнено'
+            };
+            return statusNames[status] || status;
+        }
         // Функция для показа деталей задачи
         function showTaskDetails(task) {
-            const modal = document.getElementById('viewTaskModal');
-            const details = document.getElementById('taskDetails');
-            const statusSelect = document.getElementById('statusSelect');
-            const pauseSection = document.getElementById('pauseSection');
-
             currentTaskId = task.id;
 
+            console.log('Opening modal for task:', task.id);
+
+            const modal = document.getElementById('viewTaskModal');
+            if (!modal) {
+                console.error('Modal #viewTaskModal not found!');
+                return;
+            }
+
+            const details = document.getElementById('taskDetails');
+            if (!details) {
+                console.error('Element #taskDetails not found!');
+                return;
+            }
+
+            // Заполняем детали задачи
             const startTime = formatTime(new Date(task.startDate));
             const endTime = formatTime(new Date(task.deadline));
 
@@ -1199,13 +1589,13 @@
             ${task.urgent ? '<span class="urgent-badge"><i class="fas fa-bolt"></i> Срочно!</span>' : ''}
             ${task.paused ? '<span class="paused-badge"><i class="fas fa-pause"></i> Приостановлено</span>' : ''}
         </h3>
-        <div class="task-info">
-            <p><strong>Пользователь:</strong> ${task.user}</p>
-            <p><strong>Время выполнения:</strong> ${startTime} - ${endTime}</p>
-            <p><strong>Начало:</strong> ${formatDate(task.startDate)}</p>
-            <p><strong>Дедлайн:</strong> ${formatDate(task.deadline)}</p>
-            <p><strong>Статус:</strong> ${getStatusName(task.status)}</p>
+       <div class="task-info">
+    <p><strong>Пользователь:</strong> ${task.user}</p>
+    <p><strong>Начало:</strong> ${formatDateTime(task.startDate)}</p>
+    <p><strong>Дедлайн:</strong> ${formatDateTime(task.deadline)}</p>
+    <p><strong>Статус:</strong> ${getStatusName(task.status)}</p>
     `;
+
 
             if (task.paused && task.pauseUntil && task.pauseUntil !== "0001-01-01T00:00:00Z" && task.pauseReason) {
                 detailsHtml += `
@@ -1259,9 +1649,11 @@
             const startDate = new Date(task.startDate);
             const deadline = new Date(task.deadline);
             const now = new Date();
+            const inTwoHours = new Date(now);
+            inTwoHours.setHours(now.getHours() + 5);
 
             const totalHours = Math.round((deadline - startDate) / (1000 * 60 * 60));
-            const passedHours = Math.round((now - startDate) / (1000 * 60 * 60));
+            const passedHours = Math.round((inTwoHours - startDate) / (1000 * 60 * 60));
 
             totalTimeElement.textContent = `${totalHours}ч`;
             processingTimeElement.textContent = `${passedHours}ч`;
@@ -1269,6 +1661,9 @@
 
         // Функция для создания новой задачи
         function createTask(taskData) {
+            const deadlineDate = new Date(taskData.deadline);
+            const deadlineUTC = new Date(deadlineDate.getTime() - (deadlineDate.getTimezoneOffset() * 60000));
+            taskData.deadline = deadlineUTC.toISOString().slice(0, 16);
             fetch('/api/kanban/tasks/create', {
                 method: 'POST',
                 headers: {
@@ -1298,19 +1693,27 @@
 
         // Функция для обновления статуса задачи
         function updateTaskStatus(taskId, status) {
+            // Преобразуем статус для бэкенда
+            let backendStatus = status;
+            if (status === 'in-progress') {
+                backendStatus = 'progress';
+            }
+
             fetch('/api/kanban/tasks/update-status', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    id: taskId,
-                    status: status
+                    id: parseInt(taskId),
+                    status: backendStatus
                 })
             })
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error('Ошибка обновления статуса');
+                        return response.text().then(text => {
+                            throw new Error(text || 'Ошибка обновления статуса');
+                        });
                     }
                     return response.json();
                 })
@@ -1318,31 +1721,38 @@
                     if (data.status === 'success') {
                         loadKanbanTasks();
                         showNotification('Статус задачи обновлен!', 'success');
-                        document.getElementById('viewTaskModal').style.display = 'none';
                     }
                 })
                 .catch(error => {
                     console.error('Ошибка обновления статуса:', error);
-                    showNotification('Ошибка обновления статуса', 'error');
+                    showNotification('Ошибка обновления статуса: ' + error.message, 'error');
                 });
         }
 
         // Функция для приостановки задачи
         function pauseTask(taskId, pauseUntil, pauseReason) {
+            console.log('Приостановка задачи:', taskId, pauseUntil, pauseReason);
+
+            // Преобразуем дату в правильный формат для бэкенда
+            const pauseUntilDate = new Date(pauseUntil);
+            const pauseUntilUTC = new Date(pauseUntilDate.getTime() - (pauseUntilDate.getTimezoneOffset() * 60000));
+
             fetch('/api/kanban/tasks/pause', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    id: taskId,
-                    pause_until: pauseUntil,
+                    id: parseInt(taskId),
+                    pause_until: pauseUntilUTC.toISOString(),
                     pause_reason: pauseReason
                 })
             })
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error('Ошибка приостановки задачи');
+                        return response.text().then(text => {
+                            throw new Error(text || 'Ошибка приостановки задачи');
+                        });
                     }
                     return response.json();
                 })
@@ -1350,12 +1760,11 @@
                     if (data.status === 'success') {
                         loadKanbanTasks();
                         showNotification('Задача приостановлена!', 'success');
-                        document.getElementById('viewTaskModal').style.display = 'none';
                     }
                 })
                 .catch(error => {
                     console.error('Ошибка приостановки задачи:', error);
-                    showNotification('Ошибка приостановки задачи', 'error');
+                    showNotification('Ошибка приостановки задачи: ' + error.message, 'error');
                 });
         }
 
@@ -1369,12 +1778,12 @@
             let modelOptions = '<option value="">Выберите модель</option>';
             if (selectedCategory && materialsData[selectedCategory]) {
                 modelOptions += materialsData[selectedCategory].map(item =>
-                    `<option value="${item.id}" ${item.name === selectedModel ? 'selected' : ''}>${item.name}</option>`
+                    `<option value="${item.id}" ${item.id == selectedModel ? 'selected' : ''}>${item.name} (ID: ${item.id})</option>`
                 ).join('');
             }
 
             const available = selectedModel && selectedCategory ?
-                materialsData[selectedCategory].find(item => item.name === selectedModel)?.available || 0 : 0;
+                materialsData[selectedCategory].find(item => item.id == selectedModel)?.available || 0 : 0;
 
             return `
         <div class="material-item">
@@ -1410,13 +1819,25 @@
         function formatDate(dateString) {
             if (!isValidDate(dateString)) return 'Не указано';
             const date = new Date(dateString);
-            return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+
+            // Конвертируем UTC в местное время (Екатеринбург, UTC+5)
+            const localDate = new Date(date.getTime() - 5 * 60 * 60 * 1000);
+
+            return localDate.toLocaleDateString('ru-RU', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
         }
 
         function formatDateTime(dateString) {
             if (!isValidDate(dateString)) return 'Не указано';
             const date = new Date(dateString);
-            return date.toLocaleString('ru-RU', {
+
+            // Конвертируем UTC в местное время (Екатеринбург, UTC+5)
+            const localDate = new Date(date.getTime() - 5 * 60 * 60 * 1000);
+
+            return localDate.toLocaleString('ru-RU', {
                 day: 'numeric',
                 month: 'long',
                 year: 'numeric',
@@ -1424,19 +1845,54 @@
                 minute: '2-digit'
             });
         }
+        function setupGlobalClickHandlers() {
+            // Обработчик для карточек задач в канбане
+            document.addEventListener('click', function (e) {
+                const taskCard = e.target.closest('.task-card');
+                if (taskCard) {
+                    const taskId = taskCard.getAttribute('data-id');
+                    const task = findTaskById(taskId);
+                    if (task) {
+                        showTaskDetails(task);
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                }
+            });
 
-        function formatTime(date) {
-            return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+            // Обработчик для элементов диаграммы Ганта
+            document.addEventListener('click', function (e) {
+                const ganttBar = e.target.closest('.gantt-bar');
+                if (ganttBar) {
+                    const taskId = ganttBar.getAttribute('data-task-id');
+                    const task = findTaskById(taskId);
+                    if (task) {
+                        showTaskDetails(task);
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                }
+            });
         }
 
-        function getStatusName(status) {
-            const statusNames = {
-                'queue': 'Очередь',
-                'in-progress': 'В работе',
-                'waiting': 'Ожидание',
-                'done': 'Выполнено'
-            };
-            return statusNames[status] || status;
+        // Функция для поиска задачи по ID
+        function findTaskById(taskId) {
+            const allTasks = [
+                ...currentTasks.queue,
+                ...currentTasks.progress,
+                ...currentTasks.waiting,
+                ...currentTasks.done
+            ];
+            return allTasks.find(task => task.id == taskId);
+        }
+        function formatTime(date) {
+            // Конвертируем UTC в местное время (Екатеринбург, UTC+5)
+            const localDate = new Date(date.getTime() - 5 * 60 * 60 * 1000);
+
+            return localDate.toLocaleTimeString('ru-RU', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
         }
 
         function showNotification(message, type = 'success') {
@@ -1470,13 +1926,19 @@
         document.getElementById('createTaskBtn').addEventListener('click', () => {
             document.getElementById('taskModal').style.display = 'flex';
 
-            // Добавляем пустой материал при открытии формы
-            document.getElementById('materials-container').innerHTML = createMaterialSelect();
+            // Очищаем материалы вместо добавления дефолтного
+            document.getElementById('materials-container').innerHTML = '';
 
-            // Установка дефолтных значений
+            // Установка дефолтных значений времени
             const now = new Date();
-            const nextHour = new Date(now.getTime() + 60 * 60 * 1000);
-            document.getElementById('deadline').value = nextHour.toISOString().slice(0, 16);
+            const nextHour = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+
+            // Форматируем для input[type=datetime-local]
+            const formatForInput = (date) => {
+                return date.toISOString().slice(0, 16);
+            };
+
+            document.getElementById('deadline').value = formatForInput(nextHour);
         });
 
         document.getElementById('refreshBtn').addEventListener('click', () => {
@@ -1520,19 +1982,25 @@
 
         document.getElementById('taskForm').addEventListener('submit', function (e) {
             e.preventDefault();
-
-            // Собираем материалы, только если они заполнены
+            // Корректируем время дедлайна перед отправкой
+            const deadlineInput = document.getElementById('deadline').value;
+            const deadlineDate = new Date(deadlineInput);
+            deadlineDate.setHours(deadlineDate.getHours() + 5); //  5 часов для UTC
+            // Собираем материалы как в completeTaskWithMaterials
             const materials = [];
-            document.querySelectorAll('.material-item').forEach(item => {
+            document.querySelectorAll('#materials-container .material-item').forEach(item => {
                 const category = item.querySelector('.material-category').value;
-                const model = item.querySelector('.material-model').value;
+                const modelSelect = item.querySelector('.material-model');
+                const modelId = modelSelect.value;
+                const modelName = modelSelect.options[modelSelect.selectedIndex].text.split(' (ID:')[0]; // Берем только название
                 const quantity = parseInt(item.querySelector('.quantity-input').value);
 
                 // Добавляем только полностью заполненные материалы
-                if (category && model && quantity > 0) {
+                if (category && modelId && quantity > 0) {
                     materials.push({
                         category: category,
-                        model: model,
+                        model: modelName, // Название модели
+                        model_id: parseInt(modelId), // ID модели
                         quantity: quantity
                     });
                 }
@@ -1542,7 +2010,7 @@
                 user_id: parseInt(document.getElementById('user').value),
                 place_id: parseInt(document.getElementById('location').value),
                 description: document.getElementById('problem').value,
-                deadline: document.getElementById('deadline').value,
+                deadline: deadlineDate.toISOString().slice(0, 16),
                 comments: document.getElementById('comment').value,
                 urgent: document.getElementById('urgent').checked,
                 status: 'queue'
@@ -1553,6 +2021,7 @@
                 taskData.materials = materials;
             }
 
+            console.log('Отправляемые данные для создания задачи:', taskData);
             createTask(taskData);
         });
         // Сохраняем состояние при изменении материалов
@@ -1682,6 +2151,7 @@
                 .then(() => {
                     // Затем загружаем задачи
                     loadKanbanTasks();
+                    setupGlobalClickHandlers();
 
                     // Запускаем автоматическое обновление каждые 30 секунд
                     setInterval(loadKanbanTasks, 30000);
@@ -1691,6 +2161,7 @@
                     showNotification('Ошибка загрузки данных', 'error');
                 });
         });
+
     </script>
 </body>
 
