@@ -239,7 +239,7 @@
             color: #E91E63;
         }
 
-        /* Улучшенная диаграмма Ганта с временными интервалами */
+        /* Новая структура диаграммы Ганта */
         .gantt-view {
             margin: 20px 0;
             background: white;
@@ -248,199 +248,227 @@
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
         }
 
+        /* Добавьте в секцию стилей */
+        .gantt-period.weekend {
+            background-color: #f8f9fa !important;
+            color: #6c757d !important;
+        }
+
+        .gantt-period.saturday {
+            background-color: #e9ecef !important;
+        }
+
+        .gantt-period.sunday {
+            background-color: #dee2e6 !important;
+        }
+
+        /* Подсветка выходных на временной шкале */
+        .gantt-timeline .weekend-marker {
+            position: absolute;
+            background-color: rgba(248, 249, 250, 0.5);
+            height: 100%;
+            z-index: 1;
+        }
+
+        .weekend-marker {
+            position: absolute;
+            background-color: rgba(108, 117, 125, 0.1);
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
         .gantt-header {
             display: flex;
-            margin-left: 120px;
             margin-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .gantt-categories {
+            width: 150px;
+            border-right: 1px solid #ddd;
+        }
+
+        .gantt-category {
+            padding: 15px 10px;
+            font-weight: bold;
+            text-align: center;
             border-bottom: 1px solid #eee;
-            padding-bottom: 5px;
+        }
+
+        .gantt-category:nth-child(1) {
+            background-color: #FFF3E0;
+            color: #E65100;
+        }
+
+        .gantt-category:nth-child(2) {
+            background-color: #E3F2FD;
+            color: #1565C0;
+        }
+
+        .gantt-category:nth-child(3) {
+            background-color: #FFF9C4;
+            color: #F57F17;
         }
 
         .gantt-timescale {
+            flex: 1;
             display: flex;
-            margin-left: 120px;
             position: relative;
-            background: #f8f9fa;
-            border-radius: 4px;
-            padding: 5px 0;
         }
 
         .gantt-period {
             flex: 1;
             text-align: center;
-            font-size: 12px;
+            padding: 15px 5px;
+            font-weight: bold;
+            font-size: 14px;
             color: #444;
-            font-weight: 600;
-            padding: 2px;
-            position: relative;
             border-right: 1px solid #ddd;
+            position: relative;
         }
 
         .gantt-period:last-child {
             border-right: none;
         }
 
-        .gantt-time-marks {
-            position: absolute;
-            bottom: -20px;
-            left: 0;
-            right: 0;
-            display: flex;
-            justify-content: space-between;
-            font-size: 10px;
+        .gantt-period-date {
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .gantt-period-time {
+            font-size: 12px;
             color: #666;
-            padding: 0 5px;
         }
 
         .gantt-grid {
+            display: flex;
+            min-height: 200px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
             position: relative;
-            height: 320px;
-            margin-left: 120px;
-            background:
-                repeating-linear-gradient(to right,
+            overflow: hidden;
+        }
+
+        .gantt-category-column {
+            width: 150px;
+            border-right: 1px solid #ddd;
+        }
+
+        .gantt-category-tasks {
+            min-height: 60px;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .gantt-timeline {
+            flex: 1;
+            position: relative;
+            background: repeating-linear-gradient(to right,
                     transparent,
                     transparent 6.25%,
                     #f5f5f5 6.25%,
-                    #f5f5f5 12.5%),
-                linear-gradient(to bottom,
-                    transparent 0%,
-                    transparent 95%,
-                    #eee 95%,
-                    #eee 100%);
-            background-repeat: no-repeat;
-            background-size: 100% 40px;
-            background-position: 0 0;
-            border: 1px solid #e0e0e0;
-            border-radius: 4px;
-            margin-top: 10px;
+                    #f5f5f5 12.5%);
         }
 
-        .gantt-row {
-            height: 40px;
-            display: flex;
-            align-items: center;
-            border-bottom: 1px solid #eee;
-            position: relative;
-        }
-
-        .gantt-row-label {
+        .gantt-now {
             position: absolute;
-            left: -120px;
-            width: 120px;
-            padding: 0 10px;
-            font-weight: bold;
-            font-size: 14px;
-            color: #444;
+            width: 3px;
+            background: #dc3545;
+            height: 100%;
+            top: 0;
+            z-index: 10;
+            box-shadow: 0 0 8px rgba(220, 53, 69, 0.7);
         }
 
-        .gantt-bar {
+        .gantt-now::after {
+            content: "СЕЙЧАС";
             position: absolute;
-            height: 24px;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            color: white;
+            top: -25px;
+            left: -18px;
             font-size: 11px;
+            color: #dc3545;
             font-weight: bold;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            background: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Стили для задач на диаграмме */
+        .gantt-task {
+            height: 25px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
             overflow: hidden;
             white-space: nowrap;
             z-index: 2;
             cursor: pointer;
             transition: all 0.2s ease;
             padding: 0 8px;
+            border: none;
         }
 
-        .gantt-bar:hover {
-            transform: scale(1.03);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            z-index: 3;
-        }
-
-        .gantt-bar.urgent {
+        .gantt-task.queue {
             background: linear-gradient(90deg, #FF5722, #FF9800);
             border: 1px solid #E65100;
         }
 
-        .gantt-bar.in-progress {
+        .gantt-task.in-progress {
             background: linear-gradient(90deg, #2196F3, #03A9F4);
             border: 1px solid #1565C0;
         }
 
-        .gantt-bar.waiting {
+        .gantt-task.waiting {
             background: linear-gradient(90deg, #FFC107, #FFEB3B);
             color: #333;
             border: 1px solid #FF8F00;
         }
 
-        .gantt-bar.done {
-            background: linear-gradient(90deg, #4CAF50, #8BC34A);
-            border: 1px solid #2E7D32;
+        .gantt-task:hover {
+            transform: scale(1.03);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            z-index: 3;
         }
 
-        .gantt-bar.paused {
-            background: linear-gradient(90deg, #FF9800, #FFB74D);
-            border: 1px solid #F57C00;
-            background-image: repeating-linear-gradient(45deg,
-                    transparent,
-                    transparent 5px,
-                    rgba(255, 255, 255, 0.3) 5px,
-                    rgba(255, 255, 255, 0.3) 10px);
-        }
-
-        .gantt-bar-text {
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+        .gantt-task-text {
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
             overflow: hidden;
             text-overflow: ellipsis;
-            font-weight: bold;
-        }
-
-        .gantt-bar.urgent .gantt-bar-text,
-        .gantt-bar.paused .gantt-bar-text {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .gantt-today {
-            position: absolute;
-            width: 2px;
-            background: #F44336;
-            height: 100%;
-            top: 0;
-            z-index: 10;
-        }
-
-        .gantt-today::after {
-            content: "Сегодня";
-            position: absolute;
-            top: -20px;
-            left: -15px;
-            font-size: 10px;
-            color: #F44336;
             white-space: nowrap;
-            font-weight: bold;
         }
 
-        .gantt-time-indicator {
-            position: absolute;
-            width: 2px;
-            background: #4CAF50;
-            height: 100%;
-            top: 0;
-            z-index: 1;
+        /* Адаптивность */
+        @media (max-width: 1200px) {
+            .gantt-categories {
+                width: 120px;
+            }
+
+            .gantt-category-column {
+                width: 120px;
+            }
+
+            .gantt-period-date {
+                font-size: 14px;
+            }
         }
 
-        .gantt-time-indicator::after {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: -3px;
-            width: 8px;
-            height: 8px;
-            background: #4CAF50;
-            border-radius: 50%;
+        @media (max-width: 768px) {
+            .gantt-view {
+                overflow-x: auto;
+            }
+
+            .gantt-header,
+            .gantt-grid {
+                width: 1000px;
+            }
         }
 
         .working-hours {
@@ -755,26 +783,35 @@
     </header>
 
     <div class="gantt-view">
-
-
-        <!-- Временная шкала -->
-        <div class="gantt-timescale" id="ganttTimescale">
-            <!-- Динамически генерируется через JavaScript -->
+        <div class="gantt-header">
+            <div class="gantt-categories">
+                <div class="gantt-category">Очередь</div>
+                <div class="gantt-category">В работе</div>
+                <div class="gantt-category">Ожидание</div>
+            </div>
+            <div class="gantt-timescale" id="ganttTimescale">
+                <!-- Динамически генерируется через JavaScript -->
+            </div>
         </div>
 
         <div class="gantt-grid" id="ganttGrid">
-            <!-- Рабочие часы -->
-            <div class="working-hours" style="left: 0%; width: 37.5%;"></div>
-            <div class="working-hours" style="left: 50%; width: 37.5%;"></div>
+            <div class="gantt-category-column">
+                <div class="gantt-category-tasks" data-category="queue"></div>
+                <div class="gantt-category-tasks" data-category="in-progress"></div>
+                <div class="gantt-category-tasks" data-category="waiting"></div>
+            </div>
+            <div class="gantt-timeline" id="ganttTimeline">
+                <!-- Рабочие часы -->
+                <div class="working-hours" style="left: 0%; width: 37.5%;"></div>
+                <div class="working-hours" style="left: 50%; width: 37.5%;"></div>
 
-            <!-- Линия "Сегодня" -->
-            <div class="gantt-today" id="ganttToday"></div>
+                <!-- Линия "Сейчас" -->
+                <div class="gantt-now" id="ganttNow"></div>
 
-            <!-- Текущее время -->
-            <div class="gantt-time-indicator" id="ganttTimeIndicator"></div>
-
-            <!-- Задачи на диаграмме Ганта будут добавляться динамически -->
+                <!-- Задачи будут добавляться динамически -->
+            </div>
         </div>
+
         <div style="margin-top: 10px; font-size: 12px; color: #666;">
             <i class="fas fa-info-circle"></i> Щелкните на любой задаче в диаграмме, чтобы просмотреть детали
         </div>
@@ -1042,88 +1079,192 @@
         function clearMaterialsState() {
             localStorage.removeItem('kanbanMaterials');
         }
+
         function renderGanttChart(tasks) {
             const timescale = document.getElementById('ganttTimescale');
             const grid = document.getElementById('ganttGrid');
 
             // Очищаем предыдущие элементы
             timescale.innerHTML = '';
-            grid.querySelectorAll('.gantt-bar').forEach(el => el.remove());
+            grid.innerHTML = `
+        <div class="gantt-category-column">
+            <div class="gantt-category-tasks" data-category="queue"></div>
+            <div class="gantt-category-tasks" data-category="in-progress"></div>
+            <div class="gantt-category-tasks" data-category="waiting"></div>
+        </div>
+        <div class="gantt-timeline" id="ganttTimeline">
+            <!-- Рабочие часы будут добавлены динамически -->
+            <div class="gantt-now" id="ganttNow"></div>
+        </div>
+    `;
 
-            // Находим диапазон дат задач
-            const dates = tasks.map(task => new Date(task.startDate))
-                .concat(tasks.map(task => new Date(task.deadline)));
+            // Текущее время в Екатеринбурге (UTC+5)
+            const now = new Date();
+            const nowEkaterinburg = new Date(now.getTime() + (5 * 60 * 60 * 1000));
 
-            const minDate = new Date(Math.min(...dates));
-            const maxDate = new Date(Math.max(...dates));
+            // Диапазон дат для отображения (2 недели)
+            const startDate = new Date(nowEkaterinburg);
+            startDate.setDate(startDate.getDate() - 7); // 1 неделя назад
+            startDate.setHours(0, 0, 0, 0);
 
-            // Добавляем немного padding к датам
-            minDate.setDate(minDate.getDate() - 2);
-            maxDate.setDate(maxDate.getDate() + 2);
+            const endDate = new Date(nowEkaterinburg);
+            endDate.setDate(endDate.getDate() + 7); // 1 неделя вперед
+            endDate.setHours(23, 59, 59, 999);
 
-            // Генерируем временную шкалу на основе реальных дат
-            const days = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24));
+            const totalDuration = endDate - startDate;
+            const days = Math.ceil(totalDuration / (1000 * 60 * 60 * 24));
 
-            // Создаем периоды по неделям
-            const periods = [];
-            let currentDate = new Date(minDate);
+            // Создаем временную шкалу
+            for (let i = 0; i < days; i++) {
+                const currentDate = new Date(startDate);
+                currentDate.setDate(currentDate.getDate() + i);
 
-            while (currentDate <= maxDate) {
-                periods.push(new Date(currentDate));
-                currentDate.setDate(currentDate.getDate() + 7);
-            }
-
-            periods.forEach(date => {
                 const periodEl = document.createElement('div');
                 periodEl.className = 'gantt-period';
-                periodEl.textContent = date.toLocaleDateString('ru-RU', {
-                    day: 'numeric',
-                    month: 'short'
-                }).toUpperCase();
-                timescale.appendChild(periodEl);
-            });
 
-            // Позиционируем линии времени
-            const todayLine = document.getElementById('ganttToday');
-            const timeIndicator = document.getElementById('ganttTimeIndicator');
-            const now = new Date();
-
-            // Позиция сегодняшней линии
-            const todayPos = ((now - minDate) / (maxDate - minDate)) * 100;
-            todayLine.style.left = `${Math.max(0, Math.min(100, todayPos))}%`;
-
-            // Добавляем задачи на диаграмму
-            tasks.forEach((task, index) => {
-                const start = new Date(task.startDate);
-                const end = new Date(task.deadline);
-
-                const left = ((start - minDate) / (maxDate - minDate)) * 100;
-                const width = ((end - start) / (maxDate - minDate)) * 100;
-
-                const bar = document.createElement('div');
-                bar.className = `gantt-bar ${task.status} ${task.urgent ? 'urgent' : ''} ${task.paused ? 'paused' : ''}`;
-                bar.setAttribute('data-task-id', task.id);
-
-                bar.style.left = `${Math.max(0, left)}%`;
-                bar.style.width = `${Math.max(1, Math.min(100, width))}%`;
-
-                if (task.paused) {
-                    bar.innerHTML = `<div class="gantt-bar-text"><i class="fas fa-pause"></i> ${task.title}</div>`;
-                } else if (task.urgent) {
-                    bar.innerHTML = `<div class="gantt-bar-text"><i class="fas fa-bolt"></i> ${task.title}</div>`;
-                } else {
-                    bar.innerHTML = `<div class="gantt-bar-text">${task.title}</div>`;
+                // Определяем цвет фона для выходных
+                const dayOfWeek = currentDate.getDay();
+                if (dayOfWeek === 0 || dayOfWeek === 6) {
+                    periodEl.style.background = 'linear-gradient(45deg, #f8f9fa, #e9ecef)';
+                    periodEl.style.color = '#6c757d';
                 }
 
-                bar.addEventListener('click', () => {
-                    showTaskDetails(task);
-                });
+                periodEl.innerHTML = `
+            <div class="gantt-period-date">${currentDate.getDate()}</div>
+            <div class="gantt-period-time">${getDayName(dayOfWeek)}</div>
+            <div style="font-size: 10px; margin-top: 2px;">${getMonthName(currentDate.getMonth())}</div>
+        `;
 
-                grid.appendChild(bar);
+                timescale.appendChild(periodEl);
+            }
+
+            // Позиционируем линию "Сейчас"
+            const nowLine = document.getElementById('ganttNow');
+            if (nowLine) {
+                const nowPos = ((nowEkaterinburg - startDate) / totalDuration) * 100;
+                nowLine.style.left = `${Math.max(0, Math.min(100, nowPos))}%`;
+            }
+
+            // Добавляем маркеры выходных
+            const timeline = document.getElementById('ganttTimeline');
+            for (let i = 0; i < days; i++) {
+                const currentDate = new Date(startDate);
+                currentDate.setDate(currentDate.getDate() + i);
+
+                if (currentDate.getDay() === 0 || currentDate.getDay() === 6) {
+                    const weekendMarker = document.createElement('div');
+                    weekendMarker.className = 'weekend-marker';
+                    weekendMarker.style.left = `${(i / days) * 100}%`;
+                    weekendMarker.style.width = `${(1 / days) * 100}%`;
+                    timeline.appendChild(weekendMarker);
+                }
+            }
+
+            // Добавляем задачи с ДЕБАГ-информацией
+            const filteredTasks = tasks.filter(task =>
+                task.status === 'queue' || task.status === 'in-progress' || task.status === 'waiting'
+            );
+
+            filteredTasks.forEach(task => {
+                console.log('Задача:', task.title);
+                console.log('Начало (оригинал):', task.startDate);
+                console.log('Дедлайн (оригинал):', task.deadline);
+
+                // Корректируем время для Екатеринбурга
+                const start = new Date(new Date(task.startDate).getTime() + (5 * 60 * 60 * 1000));
+                const end = new Date(new Date(task.deadline).getTime() + (5 * 60 * 60 * 1000));
+
+                console.log('Начало (Екатеринбург):', start);
+                console.log('Дедлайн (Екатеринбург):', end);
+
+                // Рассчитываем позицию
+                const left = ((start - startDate) / totalDuration) * 100;
+                const width = ((end - start) / totalDuration) * 100;
+
+                console.log('Позиция:', left, '%');
+                console.log('Ширина:', width, '%');
+                console.log('---');
+
+                if (width > 0.1) { // Минимальная ширина 0.1%
+                    const taskEl = document.createElement('div');
+                    taskEl.className = `gantt-task ${task.status}`;
+                    taskEl.setAttribute('data-task-id', task.id);
+                    taskEl.setAttribute('title', `${task.title}\n${formatDateTime(task.startDate)} - ${formatDateTime(task.deadline)}`);
+
+                    taskEl.style.left = `${Math.max(0, left)}%`;
+                    taskEl.style.width = `${Math.max(0.1, Math.min(100, width))}%`;
+                    taskEl.style.top = getTaskVerticalPosition(task.status);
+
+                    // Цвета в зависимости от статуса
+                    if (task.status === 'queue') {
+                        taskEl.style.background = 'linear-gradient(90deg, #ff6b6b, #ff8e8e)';
+                    } else if (task.status === 'in-progress') {
+                        taskEl.style.background = 'linear-gradient(90deg, #4ecdc4, #6ee7e7)';
+                    } else if (task.status === 'waiting') {
+                        taskEl.style.background = 'linear-gradient(90deg, #ffe66d, #fff3a3)';
+                    }
+
+                    taskEl.innerHTML = `
+                <div class="gantt-task-text">
+                    ${task.urgent ? '⚡ ' : ''}${task.title}
+                </div>
+            `;
+
+                    taskEl.addEventListener('click', () => {
+                        showTaskDetails(task);
+                    });
+
+                    timeline.appendChild(taskEl);
+                }
             });
         }
+        // Вспомогательные функции
+        function getDayName(day) {
+            const days = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'];
+            return days[day];
+        }
+
+        function getMonthName(month) {
+            const months = ['ЯНВ', 'ФЕВ', 'МАР', 'АПР', 'МАЙ', 'ИЮН', 'ИЮЛ', 'АВГ', 'СЕН', 'ОКТ', 'НОЯ', 'ДЕК'];
+            return months[month];
+        }
+
+        function getTaskVerticalPosition(status) {
+            const positions = {
+                'queue': '10px',
+                'in-progress': '40px',
+                'waiting': '70px'
+            };
+            return positions[status] || '10px';
+        }
+        function updateNowIndicator() {
+            const now = new Date();
+            // Корректируем для Екатеринбурга (UTC+5)
+            const nowEkaterinburg = new Date(now.getTime() + (5 * 60 * 60 * 1000));
+
+            const startDate = new Date(nowEkaterinburg);
+            startDate.setDate(startDate.getDate() - 14);
+            startDate.setHours(0, 0, 0, 0);
+
+            const endDate = new Date(nowEkaterinburg);
+            endDate.setDate(endDate.getDate() + 14);
+            endDate.setHours(23, 59, 59, 999);
+
+            const nowLine = document.getElementById('ganttNow');
+            if (nowLine) {
+                const nowPos = ((nowEkaterinburg - startDate) / (endDate - startDate)) * 100;
+                nowLine.style.left = `${Math.max(0, Math.min(100, nowPos))}%`;
+            }
+        }
+
+        // Обновляем каждую минуту
+        setInterval(updateNowIndicator, 60000);
         // Функция для загрузки задач Kanban
         function loadKanbanTasks() {
+            // В начале функции loadKanbanTasks
+            console.log('=== ДЕБАГ ДИАГРАММЫ ГАНТТА ===');
+            console.log('Текущее время (локальное):', new Date());
+            console.log('Текущее время (Екатеринбург):', new Date(new Date().getTime() + (5 * 60 * 60 * 1000)));
             showLoadingState();
 
             fetch('/api/kanban/tasks')
@@ -1163,6 +1304,9 @@
 
                     renderTasks();
                     renderGanttChart(formattedTasks);
+
+                    // Обновляем позицию "Сейчас"
+                    updateNowIndicator();
                 })
                 .catch(error => {
                     console.error('Ошибка загрузки задач:', error);
@@ -1845,6 +1989,12 @@
                 minute: '2-digit'
             });
         }
+
+        function adjustForEkaterinburg(date) {
+            if (!date) return null;
+            return new Date(date.getTime() + (5 * 60 * 60 * 1000));
+        }
+
         function setupGlobalClickHandlers() {
             // Обработчик для карточек задач в канбане
             document.addEventListener('click', function (e) {

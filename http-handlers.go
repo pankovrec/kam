@@ -84,7 +84,7 @@ func handleCompleteKanbanTask(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Обработка материала: %s - %s (ID: %d) (%d шт.)",
 			material.Category, material.Model, material.ModelID, material.Quantity)
 
-		// Используем直接 ID материала
+		// Используем ID материала
 		var currentQty int
 		err := tx.QueryRow("SELECT qty FROM warehouse WHERE id = $1 FOR UPDATE", material.ModelID).Scan(&currentQty)
 
